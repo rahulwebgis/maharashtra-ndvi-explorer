@@ -1,0 +1,1707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Maharashtra NDVI Explorer — Sentinel-2 and Landsat 8/9 vegetation index, drought change and district / taluka / village statistics.">
+<meta name="theme-color" content="#0F1416">
+<title>Maharashtra NDVI WebGIS — Sentinel-2 &amp; Landsat Vegetation</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+:root{
+  --ink:#0F1416;
+  --panel:#161D21;
+  --panel2:#1D262B;
+  --line:#2B363C;
+  --text:#E7EDEF;
+  --muted:#8FA0A8;
+  --veg:#4FAE5A;
+  --veg2:#9BD36B;
+  --a:#D9A441;
+  --b:#4FC08D;
+  --err:#E36A5C;
+  --mono:'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans:'IBM Plex Sans', -apple-system, Segoe UI, Roboto, sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;height:100%;background:var(--ink);color:var(--text);font-family:var(--sans);}
+#app{display:flex;flex-direction:column;height:100vh;}
+
+header.topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:10px 18px;background:linear-gradient(180deg,#141A1D,#111619);border-bottom:1px solid var(--line);flex-shrink:0;}
+.brand{display:flex;align-items:baseline;gap:10px;min-width:0;}
+.brand h1{font-size:16px;font-weight:700;margin:0;letter-spacing:.2px;white-space:nowrap;}
+.brand h1 .leaf{color:var(--veg2);}
+.brand span.tag{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.topbar-right{display:flex;gap:8px;align-items:center;flex-shrink:0;}
+button.btn,.btn{background:var(--panel2);color:var(--text);border:1px solid var(--line);padding:7px 12px;border-radius:6px;
+  font-size:12.5px;cursor:pointer;font-family:var(--sans);font-weight:500;transition:.15s;text-decoration:none;display:inline-block;text-align:center;}
+button.btn:hover,.btn:hover{border-color:var(--veg);color:var(--veg2);}
+button.btn.primary{background:var(--veg);border-color:var(--veg);color:#08140a;font-weight:600;}
+button.btn.primary:hover{background:var(--veg2);color:#08140a;}
+button.btn:disabled{opacity:.4;cursor:not-allowed;}
+button.btn.small{padding:5px 9px;font-size:11.5px;}
+
+.layout{display:flex;flex:1;min-height:0;}
+aside.sidebar{width:318px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;padding:14px;}
+.section{margin-bottom:16px;border-bottom:1px solid var(--line);padding-bottom:14px;}
+.section:last-child{border-bottom:none;}
+.section h2{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:0 0 9px 0;font-weight:600;}
+.section h3{font-size:11.5px;color:var(--text);margin:10px 0 4px;font-weight:600;}
+label.field{display:block;font-size:12px;color:var(--muted);margin:8px 0 4px;}
+input[type=date],input[type=text],input[type=number],select{width:100%;background:var(--ink);border:1px solid var(--line);color:var(--text);
+  padding:7px 8px;border-radius:5px;font-size:12.5px;font-family:var(--sans);}
+select:disabled{opacity:.5;}
+input[type=range]{width:100%;accent-color:var(--veg);}
+input[type=file]{font-size:11.5px;color:var(--muted);width:100%;}
+.row2{display:flex;gap:8px;}
+.row2>*{flex:1;min-width:0;}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;}
+.dot.a{background:var(--a);} .dot.b{background:var(--b);}
+.scene-info{font-family:var(--mono);font-size:11px;color:var(--muted);background:var(--ink);border:1px solid var(--line);
+  border-radius:5px;padding:8px;margin-top:6px;line-height:1.5;min-height:34px;word-break:break-word;}
+.scene-info b{color:var(--text);}
+.help{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.45;}
+.hint-ok{color:var(--veg2);} .hint-err{color:var(--err);}
+.hint-err .retry-link{color:var(--a);text-decoration:underline;cursor:pointer;}
+.bnd-row{display:flex;gap:6px;align-items:center;margin-top:5px;}
+.bnd-row .lbl{font-size:11px;color:var(--muted);flex:0 0 56px;}
+.bnd-row select{padding:5px 6px;font-size:11.5px;}
+.filebtn{position:relative;overflow:hidden;flex:0 0 auto;}
+.filebtn input{position:absolute;inset:0;opacity:0;cursor:pointer;}
+.bnd-count{font-family:var(--mono);font-size:10.5px;color:var(--muted);}
+
+main.map-wrap{flex:1;position:relative;min-width:0;}
+#map{width:100%;height:100%;background:#0d1113;}
+.leaflet-container{background:#0d1113;font-family:var(--sans);}
+.legend-box{position:absolute;right:14px;bottom:14px;z-index:900;background:rgba(19,25,28,.92);border:1px solid var(--line);
+  border-radius:8px;padding:10px 12px;font-size:11px;color:var(--muted);backdrop-filter:blur(4px);min-width:180px;}
+.legend-box .lg-title{color:var(--text);font-weight:600;font-size:11.5px;margin-bottom:6px;}
+.legend-bar{height:10px;border-radius:3px;margin:6px 0 3px;}
+.legend-scale{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10.5px;}
+#lgDelta{display:none;margin-top:8px;padding-top:6px;border-top:1px solid var(--line);}
+.compare-slider-wrap{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:900;background:rgba(19,25,28,.92);
+  border:1px solid var(--line);border-radius:20px;padding:6px 14px;display:none;align-items:center;gap:10px;backdrop-filter:blur(4px);}
+.compare-slider-wrap.active{display:flex;}
+.compare-slider-wrap input[type=range]{width:220px;}
+.compare-slider-wrap span{font-size:11px;color:var(--muted);font-family:var(--mono);}
+.compare-handle{position:absolute;top:0;bottom:0;width:3px;background:var(--veg2);z-index:850;box-shadow:0 0 8px rgba(0,0,0,.6);pointer-events:none;display:none;}
+.compare-handle.active{display:block;}
+.map-toolbar{position:absolute;top:14px;left:14px;z-index:900;display:flex;flex-direction:column;gap:6px;}
+.map-toolbar button{width:36px;height:36px;background:rgba(19,25,28,.92);border:1px solid var(--line);color:var(--text);border-radius:6px;
+  cursor:pointer;font-size:13px;font-weight:600;backdrop-filter:blur(4px);font-family:var(--mono);}
+.map-toolbar button.on{border-color:var(--veg);color:var(--veg2);}
+.map-toolbar button:disabled{opacity:.35;cursor:not-allowed;}
+.north-arrow{position:absolute;top:96px;right:14px;z-index:900;width:38px;height:50px;background:rgba(19,25,28,.85);border:1px solid var(--line);
+  border-radius:6px;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);pointer-events:none;}
+.north-arrow svg{width:22px;height:34px;}
+.identify-pop .leaflet-popup-content-wrapper{background:rgba(19,25,28,.97);color:var(--text);border:1px solid var(--line);border-radius:8px;}
+.identify-pop .leaflet-popup-content{font-size:12px;line-height:1.6;margin:9px 12px;font-family:var(--sans);}
+.identify-pop .leaflet-popup-tip{background:rgba(19,25,28,.97);}
+.ident-load{color:var(--muted);}
+.leaflet-control-zoom{border:1px solid var(--line)!important;}
+.leaflet-control-zoom a{background:rgba(19,25,28,.92)!important;color:var(--text)!important;border-color:var(--line)!important;}
+.leaflet-control-scale-line{background:rgba(19,25,28,.8);border-color:var(--muted);color:var(--text);}
+.leaflet-draw-toolbar a{background-color:rgba(19,25,28,.92)!important;}
+.leaflet-tooltip.sub-tip{background:rgba(19,25,28,.95);color:var(--text);border:1px solid var(--line);font-family:var(--sans);font-size:11.5px;}
+img.leaflet-image-layer.pixelated{image-rendering:pixelated;}
+
+section.dashboard{width:360px;flex-shrink:0;background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;padding:14px;}
+.dash-h{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:0 0 10px;font-weight:600;}
+.stat-cards{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+.stat-card{background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:9px 10px;}
+.stat-card .lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
+.stat-card .val{font-family:var(--mono);font-size:19px;font-weight:600;margin-top:2px;}
+.stat-card .sub{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:2px;}
+.stat-card.a .val{color:var(--a);} .stat-card.b .val{color:var(--b);}
+.delta-banner{background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:10px;margin-bottom:12px;font-size:12.5px;line-height:1.5;}
+.delta-banner b{font-family:var(--mono);font-size:15px;}
+.change-bar{display:flex;height:10px;border-radius:5px;overflow:hidden;margin:8px 0 4px;background:var(--line);}
+.chartbox{background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:6px;margin-bottom:12px;position:relative;height:190px;}
+.empty-state{color:var(--muted);font-size:12.5px;text-align:center;padding:40px 10px;line-height:1.6;}
+.export-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
+.export-row button{flex:1;min-width:84px;}
+table.sub{width:100%;border-collapse:collapse;font-size:11.5px;font-family:var(--mono);}
+table.sub th,table.sub td{padding:5px 4px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap;}
+table.sub th:first-child,table.sub td:first-child{text-align:left;white-space:normal;font-family:var(--sans);min-width:92px;}
+table.sub th{color:var(--muted);font-weight:600;cursor:pointer;position:sticky;top:0;background:var(--panel2);}
+table.sub tr.click{cursor:pointer;} table.sub tr.click:hover td{background:var(--panel);}
+.tablewrap{max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:7px;background:var(--panel2);}
+.sw{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:0;}
+
+.modal{position:fixed;inset:0;background:rgba(5,7,8,.75);z-index:2000;display:none;align-items:center;justify-content:center;}
+.modal.open{display:flex;}
+.modal-card{background:#0F1416;width:min(920px,94vw);max-height:92vh;overflow-y:auto;border-radius:10px;border:1px solid var(--line);}
+.modal-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid var(--line);}
+.modal-head h3{margin:0;font-size:14px;}
+.modal-body{padding:18px;overflow-x:auto;}
+#printSheet{background:#fff;color:#141414;width:820px;padding:26px 30px 20px;font-family:var(--sans);border:1px solid #ddd;}
+#printSheet .p-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #1c3023;padding-bottom:10px;margin-bottom:12px;}
+#printSheet .p-header h2{margin:0;font-size:20px;color:#13261a;}
+#printSheet .p-header .p-sub{font-size:11.5px;color:#5b6b60;margin-top:3px;}
+#printSheet .p-meta{text-align:right;font-size:10.5px;color:#5b6b60;line-height:1.5;font-family:var(--mono);}
+#printSheet .p-grid{display:flex;gap:14px;margin-bottom:12px;}
+#printSheet .p-main-map{flex:1;border:1px solid #ccc;}
+#printSheet .p-main-map img{width:100%;display:block;min-height:120px;background:#eef1ee;}
+#printSheet .p-map-label{font-size:10.5px;font-weight:700;color:#13261a;background:#eef2ee;padding:4px 7px;border-bottom:1px solid #ccc;}
+#printSheet .p-overview{border:1px solid #ccc;flex:1;display:flex;flex-direction:column;}
+#printSheet .p-overview img{width:100%;height:130px;object-fit:cover;display:block;}
+#printSheet .p-legend-mini{border:1px solid #ccc;padding:8px;font-size:10px;flex:1;}
+#printSheet .p-legend-mini .lg-bar{height:9px;border-radius:2px;margin:4px 0;}
+#printSheet .p-scene-row{margin-top:5px;font-family:var(--mono);font-size:9.5px;color:#333;line-height:1.5;word-break:break-all;}
+#printSheet .p-stats table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:10px;}
+#printSheet .p-stats th,#printSheet .p-stats td{border:1px solid #ccc;padding:4px 7px;text-align:left;}
+#printSheet .p-stats th{background:#eef2ee;}
+#printSheet .p-chart{border:1px solid #ccc;text-align:center;padding:6px;margin-bottom:10px;}
+#printSheet .p-chart img{max-width:100%;}
+#printSheet .p-footer{border-top:1px solid #ccc;padding-top:8px;display:flex;justify-content:space-between;font-size:10.5px;color:#555;}
+#printSheet .p-footer b{color:#13261a;}
+.field-inline{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
+.field-inline label{font-size:11px;color:var(--muted);display:block;margin-bottom:3px;}
+.field-inline input{background:var(--ink);border:1px solid var(--line);color:var(--text);padding:6px 8px;border-radius:5px;font-size:12.5px;}
+
+.datepick-wrap{position:relative;}
+.datepick-input{cursor:pointer;}
+.cal-icon{position:absolute;right:9px;top:8px;color:var(--muted);pointer-events:none;font-size:13px;}
+.calendar-pop{position:absolute;top:calc(100% + 6px);left:0;z-index:1500;background:#1D262B;border:1px solid var(--line);border-radius:8px;
+  padding:10px;width:250px;box-shadow:0 8px 24px rgba(0,0,0,.45);display:none;}
+.calendar-pop.open{display:block;}
+.cal-head{display:flex;align-items:center;justify-content:space-between;gap:4px;margin-bottom:8px;}
+.cal-head button{background:none;border:none;color:var(--text);font-size:15px;cursor:pointer;padding:2px 8px;border-radius:4px;}
+.cal-head button:hover{background:var(--panel);color:var(--veg2);}
+.cal-head select{background:var(--panel);border:1px solid var(--line);color:var(--text);font-size:11px;font-family:var(--mono);border-radius:4px;padding:3px 4px;width:auto;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
+.cal-grid .dow{font-size:9.5px;color:var(--muted);text-align:center;padding:3px 0;}
+.cal-grid .day{position:relative;font-size:11.5px;text-align:center;padding:5px 0;border-radius:4px;cursor:pointer;color:var(--text);}
+.cal-grid .day:hover{background:var(--panel);}
+.cal-grid .day.sel{background:var(--veg);color:#08140a;font-weight:700;}
+.cal-grid .day.mute{color:#4a565c;cursor:default;}
+.cal-grid .day.avail::after{content:'';position:absolute;left:50%;bottom:2px;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:var(--veg2);}
+.cal-grid .day.sel.avail::after{background:#08140a;}
+.cal-grid .day.unavail{color:#4a565c;cursor:not-allowed;pointer-events:none;}
+.cal-grid .day.checking{color:var(--muted);pointer-events:none;opacity:.5;}
+.cal-foot{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--muted);margin-top:8px;padding-top:8px;border-top:1px solid var(--line);}
+.cal-foot .dot{width:6px;height:6px;background:var(--veg2);flex-shrink:0;}
+.cal-foot.err{color:var(--err);}
+.loading-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-top:6px;}
+.spinner{width:13px;height:13px;border:2px solid var(--line);border-top-color:var(--veg2);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0;}
+@keyframes spin{to{transform:rotate(360deg);}}
+footer.credit{font-size:11px;color:var(--muted);text-align:center;padding:6px;border-top:1px solid var(--line);flex-shrink:0;}
+
+@media (max-width:1100px){
+  section.dashboard{width:300px;}
+  aside.sidebar{width:280px;}
+}
+@media (max-width:860px){
+  #app{height:auto;min-height:100vh;}
+  .layout{flex-direction:column;}
+  main.map-wrap{order:1;height:62vh;flex:0 0 auto;}
+  aside.sidebar{order:2;width:100%;border-right:none;border-top:1px solid var(--line);}
+  section.dashboard{order:3;width:100%;border-left:none;border-top:1px solid var(--line);}
+  .brand span.tag{display:none;}
+  .topbar-right .btn{padding:6px 8px;font-size:11.5px;}
+  .topbar-right .long{display:none;}
+  header.topbar{padding:9px 12px;}
+  .brand h1{font-size:14px;overflow:hidden;text-overflow:ellipsis;}
+  .brand{flex:1;}
+  .compare-slider-wrap input[type=range]{width:140px;}
+  .legend-box{min-width:150px;}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <h1><span class="leaf">❦</span> Maharashtra NDVI Explorer</h1>
+      <span class="tag">Sentinel-2 L2A · Landsat 8/9 C2 L2 · Vegetation &amp; drought</span>
+    </div>
+    <div class="topbar-right">
+      <button class="btn" id="btnReset" title="Reset map, layers, AOI and dashboard">↺<span class="long"> Reset</span></button>
+      <button class="btn" id="btnHelp">?<span class="long"> How this works</span></button>
+      <button class="btn primary" id="btnOpenPrint">🖶<span class="long"> Print / Export Layout</span></button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+
+      <div class="section">
+        <h2>Basemap &amp; satellite</h2>
+        <select id="basemapSel" aria-label="Basemap">
+          <option value="esri_imagery" selected>Esri World Imagery (satellite)</option>
+          <option value="carto_dark">Carto Dark</option>
+          <option value="esri_topo">Esri World Topographic</option>
+          <option value="esri_street">Esri World Street Map</option>
+          <option value="osm">OpenStreetMap Standard</option>
+        </select>
+        <label class="field">Sensor</label>
+        <select id="sensorSel">
+          <option value="s2" selected>Sentinel-2 L2A · 10 m · 2017+</option>
+          <option value="l89">Landsat 8/9 C2 L2 · 30 m · 2013+</option>
+        </select>
+        <label class="field">Map display</label>
+        <select id="displaySel">
+          <option value="ndvi" selected>NDVI (vegetation index)</option>
+          <option value="rgb">True colour (RGB)</option>
+        </select>
+      </div>
+
+      <div class="section">
+        <h2>1 · Date A (baseline)</h2>
+        <div class="datepick-wrap"><input type="text" class="datepick-input" id="dateA" value="2023-10-20" readonly aria-label="Date A"></div>
+        <div class="scene-info" id="infoA">No scene loaded yet.</div>
+      </div>
+
+      <div class="section">
+        <h2>2 · Date B (comparison)</h2>
+        <div class="datepick-wrap"><input type="text" class="datepick-input" id="dateB" value="2024-10-20" readonly aria-label="Date B"></div>
+        <div class="scene-info" id="infoB">No scene loaded yet.</div>
+      </div>
+
+      <div class="section">
+        <label class="field">Max scene cloud cover: <span id="cloudVal">30</span>%</label>
+        <input type="range" id="cloudMax" min="1" max="90" value="30">
+        <label class="field">NDVI colour scale</label>
+        <div class="row2">
+          <input type="number" id="nMin" value="-0.1" min="-1" max="1" step="0.05" aria-label="NDVI min">
+          <input type="number" id="nMax" value="0.8" min="-1" max="1" step="0.05" aria-label="NDVI max">
+        </div>
+        <label class="field">Colour ramp</label>
+        <select id="rampSel">
+          <option value="rdylgn" selected>RdYlGn (brown → green)</option>
+          <option value="spectral">Spectral</option>
+          <option value="ylgn">YlGn</option>
+          <option value="greens">Greens</option>
+          <option value="viridis">Viridis</option>
+        </select>
+        <div class="help">Same scale + ramp is applied to Date A and Date B so colours stay directly comparable.</div>
+        <button class="btn primary" id="btnSearch" style="width:100%;margin-top:10px;">Fetch satellite scenes</button>
+        <div class="loading-row" id="loadRow" style="display:none;"><div class="spinner"></div><span id="loadMsg">Searching…</span></div>
+      </div>
+
+      <div class="section">
+        <h2>3 · Compare</h2>
+        <button class="btn" id="btnCompare" style="width:100%;">Enable swipe compare (A ▸ B)</button>
+        <div class="help">Drag the slider on the map to reveal Date A vs Date B.</div>
+      </div>
+
+      <div class="section">
+        <h2>4 · Area of interest</h2>
+        <h3>Admin boundary</h3>
+        <div class="bnd-row"><span class="lbl">District</span><select id="selDistrict" disabled><option>Loading…</option></select></div>
+        <div class="bnd-row"><span class="lbl">Taluka</span><select id="selTaluka" disabled><option>Select a district</option></select></div>
+        <div class="bnd-row"><span class="lbl">Village</span><select id="selVillage" disabled><option>Select a taluka</option></select></div>
+        <div class="bnd-row" style="margin-top:8px;">
+          <label class="btn small filebtn">Taluka file<input type="file" id="fileTaluka" accept=".zip,.geojson,.json"></label>
+          <select id="fldTaluka" title="Taluka name field" disabled><option>—</option></select>
+        </div>
+        <div class="bnd-count" id="cntTaluka">Talukas: loading…</div>
+        <div class="bnd-row">
+          <label class="btn small filebtn">Village file<input type="file" id="fileVillage" accept=".zip,.geojson,.json"></label>
+          <select id="fldVillage" title="Village name field" disabled><option>—</option></select>
+        </div>
+        <div class="bnd-count" id="cntVillage">Villages: loading…</div>
+        <div class="bnd-row">
+          <label class="btn small filebtn">District file<input type="file" id="fileDistrict" accept=".zip,.geojson,.json"></label>
+          <select id="fldDistrict" title="District name field" disabled><option>—</option></select>
+        </div>
+        <div class="bnd-count" id="cntDistrict">Districts: loading…</div>
+        <div class="help">Built-in: 36 districts, 351 talukas, 45,316 villages (with LGD codes). Have your own? Load a zipped Shapefile or GeoJSON (WGS84) to replace a layer — it is matched to its parent by location. Picking a unit makes it the AOI; its talukas / villages get their own stats.</div>
+
+        <h3>Or draw / import</h3>
+        <div class="row2">
+          <button class="btn small" id="btnDrawPolygon">▲ Polygon</button>
+          <button class="btn small" id="btnDrawRect">▭ Rect</button>
+          <button class="btn small" id="btnDrawCircle">● Circle</button>
+        </div>
+        <label class="btn small filebtn" style="width:100%;margin-top:6px;">Import AOI (.zip / .geojson)<input type="file" id="aoiFile" accept=".zip,.geojson,.json"></label>
+        <button class="btn" id="btnClearDraw" style="width:100%;margin-top:6px;">Clear AOI</button>
+        <div class="help" id="aoiStatus">No AOI yet.</div>
+        <button class="btn primary" id="btnAnalyze" style="width:100%;margin-top:10px;">Analyse AOI NDVI</button>
+        <div class="loading-row" id="loadRow2" style="display:none;"><div class="spinner"></div><span id="loadMsg2">Reading raster pixels…</span></div>
+      </div>
+
+      <div class="section">
+        <h2>5 · Export</h2>
+        <div class="export-row">
+          <button class="btn small" id="expTifA">GeoTIFF · A</button>
+          <button class="btn small" id="expTifB">GeoTIFF · B</button>
+          <button class="btn small" id="expTifD">GeoTIFF · ΔNDVI</button>
+        </div>
+        <div class="export-row">
+          <button class="btn small" id="expPng">Map PNG</button>
+          <button class="btn small" id="expCsv">Stats CSV</button>
+          <button class="btn small" id="expGeo">Sub-areas GeoJSON</button>
+        </div>
+        <div class="help">GeoTIFFs are Float32 NDVI clipped to the AOI (nodata −9999, clouds masked) in WGS84, with .tfw + .prj sidecars for ArcGIS Pro / QGIS. Run an analysis first.</div>
+      </div>
+    </aside>
+
+    <main class="map-wrap">
+      <div id="map"></div>
+      <div class="map-toolbar">
+        <button id="tglA" title="Toggle Date A layer" class="on">A</button>
+        <button id="tglB" title="Toggle Date B layer" class="on">B</button>
+        <button id="tglD" title="Toggle ΔNDVI change layer (after analysis)" disabled>Δ</button>
+        <button id="tglS" title="Toggle sub-area map (after analysis)" disabled>▦</button>
+      </div>
+      <div class="compare-handle" id="compareHandle"></div>
+      <div class="compare-slider-wrap" id="compareWrap">
+        <span class="dot a"></span><span>A</span>
+        <input type="range" id="compareRange" min="0" max="100" value="50" aria-label="Swipe position">
+        <span>B</span><span class="dot b"></span>
+      </div>
+      <div class="legend-box">
+        <div class="lg-title" id="lgTitle">NDVI</div>
+        <div class="legend-bar" id="lgBar"></div>
+        <div class="legend-scale"><span id="lgMin">-0.1</span><span id="lgMax">0.8</span></div>
+        <div id="lgDelta">
+          <div class="lg-title">ΔNDVI (B − A)</div>
+          <div class="legend-bar" style="background:linear-gradient(90deg,#8c510a,#d8b365,#f6e8c3,#f5f5f5,#c7eae5,#5ab4ac,#01665e)"></div>
+          <div class="legend-scale"><span>−0.4 loss</span><span>+0.4 gain</span></div>
+        </div>
+      </div>
+    </main>
+
+    <section class="dashboard" id="dashboard">
+      <h2 class="dash-h">Dashboard</h2>
+      <div id="dashContent">
+        <div class="empty-state">Pick a district (or draw an AOI), fetch scenes for Date A &amp; B, then run <b>Analyse AOI NDVI</b> to get cloud-masked NDVI statistics, vegetation change, class breakdown and a taluka / village table here.</div>
+      </div>
+    </section>
+  </div>
+
+  <footer class="credit">Data: Copernicus Sentinel-2 L2A (ESA) &amp; USGS Landsat Collection 2 Level-2 via Microsoft Planetary Computer · Boundaries: Maharashtra district / taluka / village (built-in) or user files · Map created by Rahul Gawai</footer>
+</div>
+
+<!-- PRINT / EXPORT MODAL -->
+<div class="modal" id="printModal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3>Print layout</h3>
+      <div>
+        <button class="btn" id="btnRefreshPrint">Refresh snapshot</button>
+        <button class="btn primary" id="btnPdf">Export PDF</button>
+        <button class="btn" id="btnPngPrint">PNG</button>
+        <button class="btn" id="btnJpgPrint">JPG</button>
+        <button class="btn" id="btnClosePrint">Close</button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="field-inline">
+        <div><label>Map title</label><input type="text" id="pTitle" value="Maharashtra — NDVI Vegetation Change"></div>
+        <div><label>Area name</label><input type="text" id="pArea" value="Maharashtra"></div>
+        <div><label>Author</label><input type="text" id="pAuthor" value="Rahul Gawai"></div>
+      </div>
+      <div id="printSheet">
+        <div class="p-header">
+          <div><h2 id="shTitle">Maharashtra — NDVI Vegetation Change</h2><div class="p-sub" id="shArea">Maharashtra</div></div>
+          <div class="p-meta" id="shMeta">Date A: —<br>Date B: —<br>CRS: WGS84 (EPSG:4326)</div>
+        </div>
+        <div class="p-grid">
+          <div class="p-main-map"><div class="p-map-label" id="shLblA">Date A</div><img id="shMainImgA" alt="map A snapshot"></div>
+          <div class="p-main-map"><div class="p-map-label" id="shLblB">Date B</div><img id="shMainImgB" alt="map B snapshot"></div>
+        </div>
+        <div class="p-grid">
+          <div class="p-overview"><div class="p-map-label">Overview</div><img id="shOverviewImg" alt="overview"></div>
+          <div class="p-legend-mini">
+            <div><b>NDVI legend</b></div>
+            <div class="lg-bar" id="shLgBar"></div>
+            <div style="display:flex;justify-content:space-between;" id="shLegendRange"><span>-0.1</span><span>0.8</span></div>
+            <div style="margin-top:8px;"><b>ΔNDVI (B − A)</b></div>
+            <div class="lg-bar" style="background:linear-gradient(90deg,#8c510a,#d8b365,#f6e8c3,#f5f5f5,#c7eae5,#5ab4ac,#01665e)"></div>
+            <div style="display:flex;justify-content:space-between;"><span>−0.4</span><span>+0.4</span></div>
+            <div style="margin-top:6px;color:#555;">N ↑ &nbsp; Scale approximate</div>
+          </div>
+          <div class="p-legend-mini">
+            <b>Scene identifiers</b>
+            <div class="p-scene-row" id="shSceneA">Date A: —</div>
+            <div class="p-scene-row" id="shSceneB">Date B: —</div>
+          </div>
+        </div>
+        <div class="p-stats">
+          <table id="shStatsTable">
+            <thead><tr><th>Metric</th><th>Date A</th><th>Date B</th><th>Δ (B − A)</th></tr></thead>
+            <tbody><tr><td colspan="4" style="text-align:center;color:#888;">Run an AOI analysis to populate this table</td></tr></tbody>
+          </table>
+        </div>
+        <div class="p-chart"><img id="shChartImg" alt="chart"></div>
+        <div class="p-footer">
+          <span id="shSource">Source: Copernicus Sentinel-2 L2A / USGS Landsat C2 L2, Microsoft Planetary Computer</span>
+          <b id="shAuthor">Map created by Rahul Gawai</b>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="helpModal">
+  <div class="modal-card" style="width:min(600px,92vw);">
+    <div class="modal-head"><h3>How this portal works</h3><button class="btn" id="btnCloseHelp">Close</button></div>
+    <div class="modal-body" style="font-size:13px;line-height:1.6;color:var(--muted);">
+      <p style="color:var(--text)">This tool searches the public <b>Sentinel-2 L2A</b> and <b>Landsat 8/9 Collection 2 Level-2</b> archives through Microsoft's Planetary Computer and computes NDVI live in your browser — no login, no server.</p>
+      <ol>
+        <li>Pick the sensor and Date A / Date B (highlighted calendar days have imagery over your AOI). The closest low-cloud acquisition within ±10 days (widening to ±35) is used; for Sentinel-2, all tiles from that same day covering the AOI are combined.</li>
+        <li>NDVI = (NIR − Red) / (NIR + Red) is rendered as map tiles (Sentinel-2 B08/B04, Landsat nir08/red). Sentinel-2 scenes from processing baseline 04.00 (2022+) are corrected for the +1000 reflectance offset so years stay comparable.</li>
+        <li>Choose a <b>District → Taluka → Village</b> (or draw / import a polygon) and click <i>Analyse</i>. Red, NIR and the cloud mask are read pixel-by-pixel from the Cloud-Optimised GeoTIFFs, resampled onto one WGS84 grid, and clouds/shadows are removed (Sentinel-2 SCL classes 3, 8, 9, 10; Landsat QA_PIXEL cloud, dilated cloud and shadow bits).</li>
+        <li>The dashboard shows mean / median NDVI, vegetation classes, pixel-level change (ΔNDVI = B − A; loss &lt; −0.1, gain &gt; +0.1) and a per-taluka / per-village table. Toggle <b>Δ</b> for the change map and <b>▦</b> for the sub-area map.</li>
+        <li>Export clipped GeoTIFFs (A, B, Δ), a stats CSV, the sub-areas as GeoJSON, the map as PNG, or a print-ready PDF/JPG layout.</li>
+      </ol>
+      <p><b>Drought reading:</b> NDVI falling between the same season of two years (e.g. October 2023 vs October 2024) signals weaker crop / vegetation cover. Compare the same season, because NDVI follows the crop calendar.</p>
+      <p>Large AOIs (a whole district) are read at a coarser resolution to stay fast — the dashboard reports the effective pixel size. Built-in boundaries cover all 36 districts, 351 talukas and 45,316 villages (LGD codes); village files load per district on demand. You can replace any layer with your own file.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================== CONFIG ============================== */
+const MH_BBOX = [72.6, 15.6, 80.9, 22.1];
+const MH_CENTER = [19.2, 76.5];
+const STAC_SEARCH = 'https://planetarycomputer.microsoft.com/api/stac/v1/search';
+const DATA_ITEM = 'https://planetarycomputer.microsoft.com/api/data/v1/item';
+const SIGN_URL = 'https://planetarycomputer.microsoft.com/api/sas/v1/sign?href=';
+const DISTRICTS_URLS = [
+  'https://cdn.jsdelivr.net/gh/udit-001/india-maps-data@2884453/geojson/states/maharashtra.geojson',
+  'https://raw.githubusercontent.com/udit-001/india-maps-data/2884453/geojson/states/maharashtra.geojson'
+];
+const MAX_GRID = 1400;            // max analysis grid size (cells per side)
+
+const SENSORS = {
+  s2:  {label:'Sentinel-2 L2A', collection:'sentinel-2-l2a', res:10, minYear:2017, platformRe:/sentinel-2/i,
+        red:'B04', nir:'B08', green:'B03', blue:'B02', mask:'SCL'},
+  l89: {label:'Landsat 8/9 C2 L2', collection:'landsat-c2-l2', res:30, minYear:2013, platformRe:/landsat-8|landsat-9|LANDSAT_8|LANDSAT_9/i,
+        red:'red', nir:'nir08', green:'green', blue:'blue', mask:'qa_pixel'}
+};
+const RAMPS = {
+  rdylgn:  {tiler:'rdylgn',  stops:['#a50026','#d73027','#f46d43','#fdae61','#fee08b','#d9ef8b','#a6d96a','#66bd63','#1a9850','#006837']},
+  spectral:{tiler:'spectral',stops:['#9e0142','#d53e4f','#f46d43','#fdae61','#fee08b','#e6f598','#abdda4','#66c2a5','#3288bd','#5e4fa2']},
+  ylgn:    {tiler:'ylgn',    stops:['#ffffe5','#f7fcb9','#d9f0a3','#addd8e','#78c679','#41ab5d','#238443','#006837','#004529']},
+  greens:  {tiler:'greens',  stops:['#f7fcf5','#e5f5e0','#c7e9c0','#a1d99b','#74c476','#41ab5d','#238b45','#006d2c','#00441b']},
+  viridis: {tiler:'viridis', stops:['#440154','#482878','#3e4989','#31688e','#26828e','#1f9e89','#35b779','#6ece58','#b5de2b','#fde725']}
+};
+const DELTA_STOPS = ['#8c510a','#d8b365','#f6e8c3','#f5f5f5','#c7eae5','#5ab4ac','#01665e'];
+const NDVI_CLASSES = [
+  {name:'Water / no veg.', lo:-1,  hi:0,   color:'#4a78b5'},
+  {name:'Bare / built-up', lo:0,   hi:0.2, color:'#c2a878'},
+  {name:'Sparse veg.',     lo:0.2, hi:0.4, color:'#e3d65b'},
+  {name:'Moderate veg.',   lo:0.4, hi:0.6, color:'#8cc63f'},
+  {name:'Dense veg.',      lo:0.6, hi:1.01,color:'#1f8a3b'}
+];
+const CARTO_DARK = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+
+let state = {
+  items: {A:null, B:null},          // {date, items:[...], coverage, cloud}
+  tileLayers: {A:null, B:null},
+  aoi: null,                        // {geometry (GeoJSON Polygon/MultiPolygon), name, children:[{name, code, geometry}] | null, childLabel}
+  result: null,                     // analysis result
+  deltaLayer: null, subLayer: null,
+  charts: []
+};
+
+/* ============================== SMALL HELPERS ============================== */
+const $ = id => document.getElementById(id);
+const pad2 = n => String(n).padStart(2, '0');
+const isoOf = (y, m, d) => y + '-' + pad2(m + 1) + '-' + pad2(d);
+const isNum = x => typeof x === 'number' && isFinite(x);
+const fmt = (x, d) => isNum(x) ? x.toFixed(d) : '–';
+const fmtS = (x, d) => isNum(x) ? (x >= 0 ? '+' : '') + x.toFixed(d) : '–';
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const sensor = () => SENSORS[$('sensorSel').value];
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function hexToRgb(h){ const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+function rampRGB(stops, t){
+  t = Math.max(0, Math.min(1, t));
+  const p = t * (stops.length - 1), i = Math.min(stops.length - 2, Math.floor(p)), f = p - i;
+  const a = hexToRgb(stops[i]), b = hexToRgb(stops[i + 1]);
+  return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f].map(Math.round);
+}
+const rampCss = stops => 'linear-gradient(90deg,' + stops.join(',') + ')';
+const rgbCss = c => 'rgb(' + c.join(',') + ')';
+function downloadBlob(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+const safeName = s => String(s || 'aoi').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 60) || 'aoi';
+
+/* ============================== SCRIPT LOADER ============================== */
+function loadScript(urls){
+  return new Promise((resolve, reject) => {
+    let i = 0;
+    (function tryNext(){
+      if (i >= urls.length) { reject(new Error('all sources failed: ' + urls[0])); return; }
+      const s = document.createElement('script');
+      s.src = urls[i++]; s.onload = () => resolve(); s.onerror = () => tryNext();
+      document.head.appendChild(s);
+    })();
+  });
+}
+function loadCss(url){ const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = url; document.head.appendChild(l); }
+
+/* ============================== BOOTSTRAP ============================== */
+(async function boot(){
+  loadCss('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css');
+  loadCss('https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css');
+  try { await loadScript(['https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js', 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js']); }
+  catch (e) { $('dashContent').innerHTML = '<div class="empty-state hint-err">Leaflet failed to load. Check your network / ad-blocker and reload.<br><br>' + esc(e.message) + '</div>'; return; }
+  initMap();
+  wireUI();
+  try {
+    await loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Turf.js/6.5.0/turf.min.js', 'https://cdn.jsdelivr.net/npm/@turf/turf@6.5.0/turf.min.js']);
+  } catch (e) { setAoiStatus('Geometry library failed to load — admin boundaries unavailable.', true); }
+  loadDefaultBoundaries();
+  try { await loadScript(['https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js']); enableDrawTool(); }
+  catch (e) { ['btnDrawPolygon','btnDrawRect','btnDrawCircle'].forEach(id => $(id).disabled = true); }
+  try {
+    await loadScript(['https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.2/proj4.js', 'https://cdn.jsdelivr.net/npm/proj4@2.9.2/dist/proj4.js']);
+    await loadScript(['https://cdn.jsdelivr.net/npm/geotiff@3.0.5/dist-browser/geotiff.js', 'https://unpkg.com/geotiff@3.0.5/dist-browser/geotiff.js']);
+  } catch (e) { $('btnAnalyze').disabled = true; $('btnAnalyze').title = 'Raster analysis library failed to load'; }
+  try { await loadScript(['https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.js', 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js']); } catch (e) {}
+  try { await loadScript(['https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js']); } catch (e) { $('expPng').disabled = true; }
+  try { await loadScript(['https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js']); } catch (e) { $('btnPdf').disabled = true; }
+})();
+
+/* ============================== MAP ============================== */
+let map, drawnItems, drawControl, basemapLayer, aoiLayer, childLayer;
+const BASEMAPS = {
+  carto_dark:  {url:CARTO_DARK, opts:{attribution:'&copy; OpenStreetMap &copy; CARTO', subdomains:'abcd', maxZoom:19}},
+  esri_imagery:{url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', opts:{attribution:'Esri, Maxar, Earthstar Geographics', maxZoom:19}},
+  esri_topo:   {url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', opts:{attribution:'Esri, HERE, Garmin, FAO, NOAA', maxZoom:19}},
+  esri_street: {url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', opts:{attribution:'Esri, HERE, Garmin, FAO, NOAA', maxZoom:19}},
+  osm:         {url:'https://tile.openstreetmap.org/{z}/{x}/{y}.png', opts:{attribution:'&copy; OpenStreetMap contributors', maxZoom:19}}
+};
+function setBasemap(key){
+  if (basemapLayer) map.removeLayer(basemapLayer);
+  const cfg = BASEMAPS[key] || BASEMAPS.esri_imagery;
+  basemapLayer = L.tileLayer(cfg.url, cfg.opts).addTo(map);
+  basemapLayer.bringToBack();
+}
+function initMap(){
+  map = L.map('map', {zoomControl:false, minZoom:4, maxZoom:19}).setView(MH_CENTER, 7);
+  L.control.zoom({position:'topright'}).addTo(map);
+  setBasemap('esri_imagery');
+  L.control.scale({position:'bottomleft', metric:true, imperial:false, maxWidth:160}).addTo(map);
+  const na = document.createElement('div');
+  na.className = 'north-arrow';
+  na.innerHTML = '<svg viewBox="0 0 24 36" xmlns="http://www.w3.org/2000/svg"><polygon points="12,0 22,32 12,24 2,32" fill="#E7EDEF" stroke="#0F1416" stroke-width="1"/><text x="12" y="35" text-anchor="middle" font-size="9" fill="#E7EDEF" font-family="sans-serif" font-weight="700">N</text></svg>';
+  $('map').appendChild(na);
+  map.createPane('panelayerA'); map.getPane('panelayerA').style.zIndex = 410;
+  map.createPane('panelayerB'); map.getPane('panelayerB').style.zIndex = 420;
+  map.createPane('deltaPane'); map.getPane('deltaPane').style.zIndex = 425;
+  map.createPane('subPane');   map.getPane('subPane').style.zIndex = 428;
+  map.createPane('bndPane');   map.getPane('bndPane').style.zIndex = 440; map.getPane('bndPane').style.pointerEvents = 'none';
+  map.createPane('drawPane');  map.getPane('drawPane').style.zIndex = 450;
+  drawnItems = new L.FeatureGroup().addTo(map);
+  map.on('click', onMapIdentify);
+  map.on('move zoom', updateCompareClip);
+}
+function enableDrawTool(){
+  const so = {pane:'drawPane', color:'#9BD36B', weight:2};
+  drawControl = new L.Control.Draw({draw:{polygon:{shapeOptions:so}, polyline:false, circle:{shapeOptions:so}, rectangle:{shapeOptions:so}, marker:false, circlemarker:false},
+    edit:{featureGroup:drawnItems}});
+  map.on(L.Draw.Event.CREATED, e => {
+    let ring;
+    if (e.layerType === 'circle') ring = circleToRing(e.layer.getLatLng(), e.layer.getRadius());
+    else ring = e.layer.getLatLngs()[0].map(p => [p.lng, p.lat]);
+    ring.push(ring[0]);
+    resetAdminSelects();
+    setAOI({type:'Polygon', coordinates:[ring]}, 'Drawn ' + e.layerType, null);
+  });
+}
+function startDraw(type){
+  if (typeof L.Draw === 'undefined') { alert('Drawing tool is still loading — try again in a second.'); return; }
+  const opts = drawControl.options.draw[type];
+  const Ctor = type === 'circle' ? L.Draw.Circle : type === 'rectangle' ? L.Draw.Rectangle : L.Draw.Polygon;
+  new Ctor(map, opts).enable();
+}
+function circleToRing(center, r, n){
+  n = n || 64; const R = 6378137, lat0 = center.lat * Math.PI / 180, pts = [];
+  for (let i = 0; i < n; i++) {
+    const a = i / n * 2 * Math.PI, dx = r * Math.cos(a), dy = r * Math.sin(a);
+    pts.push([center.lng + dx / (R * Math.cos(lat0)) * 180 / Math.PI, center.lat + dy / R * 180 / Math.PI]);
+  }
+  return pts;
+}
+
+/* ============================== AOI ============================== */
+function geomBBox(g){
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  const polys = g.type === 'Polygon' ? [g.coordinates] : g.coordinates;
+  polys.forEach(p => p.forEach(r => r.forEach(([x, y]) => { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; })));
+  return [x0, y0, x1, y1];
+}
+function setAoiStatus(msg, err){ const el = $('aoiStatus'); el.className = 'help' + (err ? ' hint-err' : ' hint-ok'); el.innerHTML = msg; }
+function setAOI(geometry, name, children, childLabel){
+  state.aoi = {geometry, name, children: children && children.length ? children : null, childLabel: childLabel || null, bbox: geomBBox(geometry)};
+  clearResult();
+  drawnItems.clearLayers();
+  if (aoiLayer) { map.removeLayer(aoiLayer); aoiLayer = null; }
+  if (childLayer) { map.removeLayer(childLayer); childLayer = null; }
+  if (state.aoi.children) {
+    childLayer = L.geoJSON({type:'FeatureCollection', features: state.aoi.children.map(c => ({type:'Feature', geometry:c.geometry, properties:{}}))},
+      {pane:'bndPane', interactive:false, style:{color:'#E7EDEF', weight:.8, opacity:.75, fill:false}}).addTo(map);
+  }
+  aoiLayer = L.geoJSON({type:'Feature', geometry, properties:{}}, {pane:'drawPane', interactive:false, style:{color:'#9BD36B', weight:2.5, fill:false}}).addTo(map);
+  map.fitBounds(aoiLayer.getBounds(), {padding:[24, 24]});
+  const km2 = typeof turf !== 'undefined' ? turf.area({type:'Feature', geometry, properties:{}}) / 1e6 : null;
+  setAoiStatus('AOI: <b>' + esc(name) + '</b>' + (km2 ? ' · ' + km2.toLocaleString(undefined, {maximumFractionDigits: km2 < 10 ? 2 : 0}) + ' km²' : '') +
+    (state.aoi.children ? ' · ' + state.aoi.children.length + ' ' + childLabel : '') + '<br>Fetch scenes, then Analyse.');
+  $('pArea').value = name + ', Maharashtra'; $('shArea').textContent = $('pArea').value;
+  availCache.clear();
+}
+function clearAOI(){
+  state.aoi = null; clearResult(); drawnItems.clearLayers();
+  if (aoiLayer) { map.removeLayer(aoiLayer); aoiLayer = null; }
+  if (childLayer) { map.removeLayer(childLayer); childLayer = null; }
+  resetAdminSelects();
+  setAoiStatus('No AOI — searches use the Maharashtra extent. Pick an admin unit or draw one to analyse.');
+}
+function aoiSearchBBox(){
+  if (!state.aoi) return MH_BBOX;
+  const b = state.aoi.bbox, px = Math.max((b[2] - b[0]) * 0.05, 0.01), py = Math.max((b[3] - b[1]) * 0.05, 0.01);
+  return [b[0] - px, b[1] - py, b[2] + px, b[3] + py].map(v => +v.toFixed(5));
+}
+function normaliseFC(gj){
+  if (Array.isArray(gj)) gj = {type:'FeatureCollection', features: gj.flatMap(x => x.features || [])};
+  if (gj.type === 'Feature') gj = {type:'FeatureCollection', features:[gj]};
+  else if (gj.type === 'Polygon' || gj.type === 'MultiPolygon') gj = {type:'FeatureCollection', features:[{type:'Feature', properties:{}, geometry:gj}]};
+  const feats = (gj.features || []).filter(f => f && f.geometry && /Polygon/.test(f.geometry.type));
+  if (!feats.length) throw new Error('No polygon features found.');
+  const b = geomBBox(feats[0].geometry);
+  if (Math.abs(b[0]) > 180 || Math.abs(b[1]) > 90) throw new Error('Coordinates are not WGS84 (EPSG:4326) — reproject first.');
+  feats.forEach((f, i) => { f.properties = f.properties || {}; f.properties._id = i; f.properties._bbox = geomBBox(f.geometry); });
+  return {type:'FeatureCollection', features: feats};
+}
+async function readVectorFile(file){
+  if (/\.zip$/i.test(file.name)) {
+    if (typeof shp === 'undefined') await loadScript(['https://cdn.jsdelivr.net/npm/shpjs@4.0.4/dist/shp.min.js', 'https://unpkg.com/shpjs@4.0.4/dist/shp.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/shpjs/4.0.4/shp.min.js']);
+    return normaliseFC(await shp(await file.arrayBuffer()));
+  }
+  return normaliseFC(JSON.parse(await file.text()));
+}
+async function handleAoiFile(e){
+  const file = e.target.files[0]; if (!file) return;
+  setAoiStatus('Reading ' + esc(file.name) + '…');
+  try {
+    const fc = await readVectorFile(file);
+    let geom;
+    if (fc.features.length === 1) geom = fc.features[0].geometry;
+    else geom = {type:'MultiPolygon', coordinates: fc.features.flatMap(f => f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates)};
+    resetAdminSelects();
+    // multi-feature files: treat each feature as a sub-area
+    const kids = fc.features.length > 1 ? fc.features.map((f, i) => ({name: guessName(f.properties) || ('Feature ' + (i + 1)), code: null, geometry: f.geometry})) : null;
+    setAOI(geom, file.name.replace(/\.(zip|geojson|json)$/i, ''), kids, kids ? 'features' : null);
+  } catch (err) { setAoiStatus('Import failed: ' + esc(err.message), true); }
+  e.target.value = '';
+}
+function guessName(p){
+  const k = Object.keys(p || {}).find(k => /name|village|taluka|tehsil|district/i.test(k) && typeof p[k] === 'string');
+  return k ? p[k] : null;
+}
+
+/* ============================== ADMIN BOUNDARIES ============================== */
+const B = {district:{fc:null, field:null}, taluka:{fc:null, field:null}, village:{fc:null, field:null}};
+const NAME_HINT = {
+  district:/^(district|dist_?name|dtname|dt_name|district_n|name_2|adm2_name|name)$/i,
+  taluka:/^(taluka|tehsil|tahsil|subdistrict|sub_dist|sdtname|sdt_name|taluk|block|name_3|adm3_name|name)$/i,
+  village:/^(village|vill_name|village_na|vil_name|name_4|name)$/i
+};
+const VCACHE = new Map();
+function pip(pt, g){                      // point-in-(multi)polygon, even-odd over all rings
+  const [x, y] = pt; let inside = false;
+  const polys = g.type === 'Polygon' ? [g.coordinates] : g.coordinates;
+  for (const poly of polys) for (const r of poly) {
+    for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+      const xi = r[i][0], yi = r[i][1], xj = r[j][0], yj = r[j][1];
+      if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+    }
+  }
+  return inside;
+}
+function inBBox(pt, b){ return pt[0] >= b[0] && pt[0] <= b[2] && pt[1] >= b[1] && pt[1] <= b[3]; }
+function interiorPt(f){
+  if (!f.properties._pt) f.properties._pt = typeof turf !== 'undefined' ? turf.pointOnFeature(f).geometry.coordinates
+    : [(f.properties._bbox[0] + f.properties._bbox[2]) / 2, (f.properties._bbox[1] + f.properties._bbox[3]) / 2];
+  return f.properties._pt;
+}
+function nameOf(kind, f){ const v = f.properties[B[kind].field]; return v == null || v === '' ? '(unnamed ' + f.properties._id + ')' : String(v); }
+/* Built-in boundaries (data/ folder next to index.html):
+ *   data/districts.geojson   36 districts   {district, slug}
+ *   data/talukas.geojson     351 talukas    {taluka, district}
+ *   data/villages/<slug>.geojson  one file per district {village, taluka, district, lgd, type} — loaded on demand */
+const DATA_BASE = 'data/';
+const DEF = {districts:false, talukas:false, villages:false};   // true while the built-in layer is in use
+const LABEL = {district:'Districts', taluka:'Talukas', village:'Villages'};
+function setCount(kind, text){ $('cnt' + kind[0].toUpperCase() + kind.slice(1)).innerHTML = text; }
+function setBoundary(kind, fc, opts){
+  opts = opts || {};
+  B[kind].fc = fc;
+  const keys = Object.keys(fc.features[0].properties).filter(k => !k.startsWith('_'));
+  B[kind].field = opts.field && keys.includes(opts.field) ? opts.field
+    : keys.find(k => NAME_HINT[kind].test(k)) || keys.find(k => typeof fc.features[0].properties[k] === 'string') || keys[0];
+  B[kind].codeField = opts.codeField && keys.includes(opts.codeField) ? opts.codeField : (keys.find(k => /^(lgd|lgd_code|census_?code|vil_code|code)$/i.test(k)) || null);
+  const sel = $('fld' + kind[0].toUpperCase() + kind.slice(1));
+  sel.innerHTML = keys.map(k => '<option' + (k === B[kind].field ? ' selected' : '') + '>' + esc(k) + '</option>').join('');
+  sel.disabled = false;
+  if (!opts.quiet) setCount(kind, LABEL[kind] + ': ' + fc.features.length.toLocaleString() + ' loaded' + (opts.src ? ' · ' + esc(opts.src) : ''));
+  if (kind !== 'village') { linkParents(); fillDistricts(); }
+  else { VCACHE.clear(); }
+}
+function linkParents(){
+  VCACHE.clear();
+  if (!B.taluka.fc || !B.district.fc) return;
+  // 1) attribute link when talukas carry a district name that matches the district layer
+  const byName = new Map(B.district.fc.features.map(d => [nameOf('district', d).toLowerCase(), d.properties._id]));
+  let matched = 0;
+  B.taluka.fc.features.forEach(t => {
+    const dn = t.properties.district;
+    const id = dn != null ? byName.get(String(dn).toLowerCase()) : undefined;
+    t.properties._parent = id === undefined ? null : id;
+    if (id !== undefined) matched++;
+  });
+  if (matched >= 0.9 * B.taluka.fc.features.length) return;
+  // 2) otherwise spatial: taluka interior point inside district polygon
+  B.taluka.fc.features.forEach(t => {
+    const p = interiorPt(t);
+    const d = B.district.fc.features.find(d => inBBox(p, d.properties._bbox) && pip(p, d.geometry));
+    t.properties._parent = d ? d.properties._id : -1;
+  });
+}
+function talukasOf(d){ return B.taluka.fc ? B.taluka.fc.features.filter(t => t.properties._parent === d.properties._id) : []; }
+function villagesOf(t){
+  if (!B.village.fc) return [];
+  const key = t.properties._id;
+  if (VCACHE.has(key)) return VCACHE.get(key);
+  let list;
+  const tn = nameOf('taluka', t).toLowerCase();
+  if (DEF.villages) list = B.village.fc.features.filter(v => String(v.properties.taluka || '').toLowerCase() === tn);
+  if (!list || !list.length) {
+    const tb = t.properties._bbox;
+    list = B.village.fc.features.filter(v => {
+      const b = v.properties._bbox;
+      if (b[2] < tb[0] || b[0] > tb[2] || b[3] < tb[1] || b[1] > tb[3]) return false;
+      return pip(interiorPt(v), t.geometry);
+    });
+  }
+  VCACHE.set(key, list);
+  return list;
+}
+function villageLabel(f){ const c = B.village.codeField ? f.properties[B.village.codeField] : null; return nameOf('village', f) + (c ? ' · ' + c : ''); }
+function opt(el, first, items){ el.innerHTML = ''; if (first) el.add(new Option(first[0], first[1])); items.forEach(([l, v]) => el.add(new Option(l, v))); }
+function fillDistricts(){
+  const el = $('selDistrict');
+  if (!B.district.fc) { opt(el, ['No districts', ''], []); el.disabled = true; return; }
+  const keep = el.value;
+  opt(el, ['— choose district —', ''], B.district.fc.features.map(f => [nameOf('district', f), f.properties._id]).sort((a, b) => a[0].localeCompare(b[0])));
+  el.disabled = false;
+  fillTalukas(null);
+  if (keep && [...el.options].some(o => o.value === keep)) el.value = keep;
+}
+function fillTalukas(d){
+  const el = $('selTaluka');
+  if (!d) { opt(el, ['Select a district', ''], []); el.disabled = true; fillVillages(null); return; }
+  if (!B.taluka.fc) { opt(el, ['Load a taluka file', ''], []); el.disabled = true; fillVillages(null); return; }
+  const list = talukasOf(d).map(f => [nameOf('taluka', f), f.properties._id]).sort((a, b) => a[0].localeCompare(b[0]));
+  opt(el, ['(whole district · ' + list.length + ' talukas)', ''], list); el.disabled = !list.length;
+  fillVillages(null);
+}
+function fillVillages(t){
+  const el = $('selVillage');
+  if (!t) { opt(el, ['Select a taluka', ''], []); el.disabled = true; return; }
+  if (!B.village.fc) { opt(el, [DEF.villages ? 'Loading villages…' : 'Load a village file', ''], []); el.disabled = true; return; }
+  const list = villagesOf(t).map(f => [villageLabel(f), f.properties._id]).sort((a, b) => a[0].localeCompare(b[0]));
+  opt(el, ['(whole taluka · ' + list.length + ' villages)', ''], list); el.disabled = !list.length;
+}
+function resetAdminSelects(){ if (B.district.fc) { $('selDistrict').value = ''; fillTalukas(null); } }
+const childOf = (kind, f) => ({name: nameOf(kind, f), code: kind === 'village' && B.village.codeField ? f.properties[B.village.codeField] : null, geometry: f.geometry});
+
+/* built-in village layer: fetch the selected district's file on demand */
+const villageFiles = new Map();
+let villageSlug = null;
+function districtSlug(d){ return d.properties.slug || nameOf('district', d).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); }
+async function ensureVillages(d){
+  if (!DEF.villages || !d) return;
+  const slug = districtSlug(d);
+  if (villageSlug === slug && B.village.fc) return;
+  if (!villageFiles.has(slug)) {
+    setCount('village', '<span class="ident-load">Villages: loading ' + esc(nameOf('district', d)) + '…</span>');
+    villageFiles.set(slug, fetch(DATA_BASE + 'villages/' + slug + '.geojson').then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(gj => normaliseFC(gj)).catch(e => { villageFiles.delete(slug); throw e; }));
+  }
+  try {
+    const fc = await villageFiles.get(slug);
+    if (!DEF.villages) return;                                  // user loaded their own file meanwhile
+    villageSlug = slug;
+    setBoundary('village', fc, {field:'village', codeField:'lgd', quiet:true});
+    setCount('village', 'Villages: ' + fc.features.length.toLocaleString() + ' in ' + esc(nameOf('district', d)) + ' (built-in, LGD codes)');
+  } catch (e) {
+    setCount('village', '<span class="hint-err">Villages: could not load built-in file (' + esc(e.message) + ') — load a file</span>');
+  }
+}
+let adminToken = 0;
+async function onAdminChange(level){
+  const tok = ++adminToken;
+  const dId = $('selDistrict').value, tId = $('selTaluka').value;
+  const d = dId !== '' ? B.district.fc.features[+dId] : null;
+  if (level === 'district') fillTalukas(d);
+  const t = level !== 'district' && tId !== '' && B.taluka.fc ? B.taluka.fc.features[+tId] : null;
+  if (DEF.villages && d) {
+    const p = ensureVillages(d);
+    if (level === 'district') p.then(() => { if (tok === adminToken && $('selTaluka').value) fillVillages(B.taluka.fc.features[+$('selTaluka').value]); });
+    else { if (level === 'taluka') fillVillages(t); await p; if (tok !== adminToken) return; }
+  }
+  if (level === 'taluka') fillVillages(t);
+  const vId = $('selVillage').value;
+  const v = level === 'village' && vId !== '' && B.village.fc ? B.village.fc.features[+vId] : null;
+  if (v) setAOI(v.geometry, nameOf('village', v) + ' village, ' + nameOf('taluka', t) + ' taluka', null);
+  else if (t) setAOI(t.geometry, nameOf('taluka', t) + ' taluka, ' + nameOf('district', d), villagesOf(t).map(f => childOf('village', f)), 'villages');
+  else if (d) setAOI(d.geometry, nameOf('district', d) + ' district', talukasOf(d).map(f => childOf('taluka', f)), 'talukas');
+  else clearAOI();
+}
+async function fetchFC(url){ const r = await fetch(url); if (!r.ok) throw new Error('HTTP ' + r.status); return normaliseFC(await r.json()); }
+async function loadDefaultBoundaries(){
+  // 1) built-in data/ folder (36 districts, 351 talukas, 45k villages)
+  try {
+    const [dfc, tfc] = await Promise.all([fetchFC(DATA_BASE + 'districts.geojson'), fetchFC(DATA_BASE + 'talukas.geojson')]);
+    DEF.districts = DEF.talukas = DEF.villages = true;
+    B.district.fc = dfc; setBoundary('district', dfc, {field:'district', quiet:true});
+    setBoundary('taluka', tfc, {field:'taluka', quiet:true});
+    setCount('district', 'Districts: 36 (built-in)'.replace('36', dfc.features.length));
+    setCount('taluka', 'Talukas: ' + tfc.features.length + ' (built-in)');
+    setCount('village', 'Villages: built-in, loaded per district');
+  } catch (e) {
+    console.warn('built-in boundaries unavailable', e);
+    // 2) fallback: Census 2011 districts from the web
+    for (const url of DISTRICTS_URLS) {
+      try { setBoundary('district', await fetchFC(url), {field:'district', quiet:true}); setCount('district', 'Districts: ' + B.district.fc.features.length + ' (Census 2011, web)'); break; }
+      catch (err) { console.warn('districts', url, err); }
+    }
+    if (!B.district.fc) { setCount('district', '<span class="hint-err">Districts: could not load defaults — load a file</span>'); fillDistricts(); return; }
+    setCount('taluka', 'Talukas: not loaded (built-in data/ folder missing' + (location.protocol === 'file:' ? ' — serve over http' : '') + ')');
+  }
+  const pune = B.district.fc.features.find(f => /^pune$/i.test(nameOf('district', f)));
+  if (pune && !state.aoi) { $('selDistrict').value = String(pune.properties._id); onAdminChange('district'); }
+}
+async function onBoundaryFile(kind, e){
+  const file = e.target.files[0]; if (!file) return;
+  setCount(kind, 'Reading ' + esc(file.name) + '…');
+  try {
+    const fc = await readVectorFile(file);
+    if (kind === 'village') { DEF.villages = false; villageSlug = null; }
+    if (kind === 'taluka') DEF.talukas = false;
+    if (kind === 'district') DEF.districts = false;
+    setBoundary(kind, fc, {src: file.name});
+    if (kind === 'village' && $('selTaluka').value) fillVillages(B.taluka.fc.features[+$('selTaluka').value]);
+  } catch (err) { setCount(kind, '<span class="hint-err">' + esc(err.message) + '</span>'); }
+  e.target.value = '';
+}
+
+/* ============================== STAC SEARCH ============================== */
+async function stacGet(bbox, from, to, limit){
+  const S = sensor();
+  const params = new URLSearchParams({collections:S.collection, bbox:bbox.join(','), datetime:from + '/' + to, limit:String(limit || 250)});
+  let res;
+  try { res = await fetch(STAC_SEARCH + '?' + params.toString(), {method:'GET'}); }
+  catch (e) { throw new Error('Could not reach the Planetary Computer STAC API (network/firewall/ad-blocker). ' + e.message); }
+  if (!res.ok) throw new Error('STAC search failed (HTTP ' + res.status + ')');
+  const json = await res.json();
+  return (json.features || []).filter(f => S.platformRe.test(f.properties.platform || ''));
+}
+function aoiSamplePoints(){
+  const b = state.aoi ? state.aoi.bbox : aoiSearchBBox(), pts = [];
+  for (let i = 0; i < 7; i++) for (let j = 0; j < 7; j++) {
+    const p = [b[0] + (b[2] - b[0]) * (i + .5) / 7, b[1] + (b[3] - b[1]) * (j + .5) / 7];
+    if (!state.aoi || pip(p, state.aoi.geometry)) pts.push(p);
+  }
+  if (!pts.length) pts.push([(b[0] + b[2]) / 2, (b[1] + b[3]) / 2]);
+  return pts;
+}
+function itemCovers(item, p){ return (!item.bbox || inBBox(p, item.bbox)) && pip(p, item.geometry); }
+async function findScene(dateStr, cloudMax){
+  const d = new Date(dateStr + 'T00:00:00Z');
+  const S = sensor();
+  if (d.getUTCFullYear() < S.minYear) throw new Error(S.label + ' data starts in ' + S.minYear + '.');
+  const bbox = aoiSearchBBox(), pts = aoiSamplePoints();
+  for (const win of [10, 20, 35]) {
+    const from = new Date(d.getTime() - win * 864e5).toISOString().slice(0, 10);
+    const to = new Date(d.getTime() + win * 864e5).toISOString().slice(0, 10);
+    const feats = (await stacGet(bbox, from, to)).filter(f => (f.properties['eo:cloud_cover'] ?? 100) <= Number(cloudMax));
+    if (!feats.length) continue;
+    const byDay = new Map();
+    feats.forEach(f => { const k = f.properties.datetime.slice(0, 10); if (!byDay.has(k)) byDay.set(k, []); byDay.get(k).push(f); });
+    let best = null;
+    byDay.forEach((items, day) => {
+      const covered = pts.filter(p => items.some(it => itemCovers(it, p))).length / pts.length;
+      if (!covered) return;
+      const used = items.filter(it => pts.some(p => itemCovers(it, p)));
+      const cloud = used.reduce((s, it) => s + it.properties['eo:cloud_cover'], 0) / used.length;
+      const dist = Math.abs(new Date(day + 'T00:00:00Z') - d) / 864e5;
+      const score = (covered >= 0.9 ? 0 : 1000) + (1 - covered) * 200 + dist + cloud * 1.5;
+      if (!best || score < best.score) best = {date: day, items: used, coverage: covered, cloud, score};
+    });
+    if (best) return best;
+  }
+  throw new Error('No ' + S.label + ' scene near this date at ≤' + cloudMax + '% cloud, even within ±35 days. Raise the cloud slider or pick another date.');
+}
+
+/* ============================== TILE LAYERS ============================== */
+function s2Offset(item){ return parseFloat(item.properties['s2:processing_baseline'] || '0') >= 4 ? 1000 : 0; }
+function ndviExpr(item){
+  const S = SENSORS[item.collection === 'landsat-c2-l2' ? 'l89' : 's2'];
+  if (S === SENSORS.s2) { const o = s2Offset(item); return o ? '(B08-B04)/(B08+B04-' + (2 * o) + ')' : '(B08-B04)/(B08+B04)'; }
+  return '(nir08-red)/(nir08+red-14545.4545)';        // Landsat C2 L2 SR: DN*2.75e-5 - 0.2
+}
+function tileUrl(item){
+  const isL = item.collection === 'landsat-c2-l2', S = isL ? SENSORS.l89 : SENSORS.s2;
+  const base = DATA_ITEM + '/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?collection=' + S.collection + '&item=' + encodeURIComponent(item.id);
+  if ($('displaySel').value === 'rgb') {
+    const o = isL ? 0 : s2Offset(item);
+    const rescale = isL ? '7500,15500' : o + ',' + (o + 3000);
+    return base + '&assets=' + S.red + '&assets=' + S.green + '&assets=' + S.blue + '&rescale=' + encodeURIComponent(rescale) +
+      '&color_formula=' + encodeURIComponent('Gamma RGB 1.5 Saturation 1.1') + '&format=png&nodata=0';
+  }
+  const ramp = (RAMPS[$('rampSel').value] || RAMPS.rdylgn).tiler;
+  return base + '&assets=' + S.red + '&assets=' + S.nir + '&asset_as_band=true&expression=' + encodeURIComponent(ndviExpr(item)) +
+    '&rescale=' + encodeURIComponent($('nMin').value + ',' + $('nMax').value) + '&colormap_name=' + ramp + '&format=png&nodata=0';
+}
+function loadSlotLayer(slot){
+  const scene = state.items[slot]; if (!scene) return;
+  if (state.tileLayers[slot]) map.removeLayer(state.tileLayers[slot]);
+  const group = L.layerGroup();
+  let errs = 0, shown = false;
+  scene.items.forEach(item => {
+    const bounds = Array.isArray(item.bbox) ? L.latLngBounds([item.bbox[1], item.bbox[0]], [item.bbox[3], item.bbox[2]]) : undefined;
+    const url = tileUrl(item);
+    const layer = L.tileLayer(url, {pane:'panelayer' + slot, maxZoom:18, bounds});
+    const tries = new Map();
+    layer.on('tileerror', e => {
+      const key = e.coords.z + '/' + e.coords.x + '/' + e.coords.y, n = (tries.get(key) || 0) + 1;
+      tries.set(key, n);
+      if (n <= 2 && e.tile) { setTimeout(() => { if (e.tile) e.tile.src = url.replace('{z}', e.coords.z).replace('{x}', e.coords.x).replace('{y}', e.coords.y) + '&_r=' + n + '-' + Date.now(); }, n * 700); return; }
+      if (++errs === 4 && !shown) {
+        shown = true;
+        $('info' + slot).insertAdjacentHTML('beforeend', '<br><span class="hint-err">Some tiles failed (cloud edge or tiler busy). <a href="#" class="retry-link" data-slot="' + slot + '">Retry</a></span>');
+        const link = $('info' + slot).querySelector('.retry-link');
+        if (link) link.onclick = ev => { ev.preventDefault(); loadDate(slot); };
+      }
+    });
+    group.addLayer(layer);
+  });
+  group.addTo(map);
+  state.tileLayers[slot] = group;
+}
+function refreshLoadedLayers(){ ['A', 'B'].forEach(s => { if (state.items[s]) loadSlotLayer(s); }); updateCompareClip(); }
+function sceneInfoHtml(sc){
+  const ids = sc.items.map(i => i.id);
+  return '<b>' + sc.date + '</b> · cloud ' + sc.cloud.toFixed(1) + '% · ' + sc.items.length + ' tile' + (sc.items.length > 1 ? 's' : '') +
+    ' · AOI cover ' + Math.round(sc.coverage * 100) + '%<br>' + esc(ids.slice(0, 3).join(', ')) + (ids.length > 3 ? ' +' + (ids.length - 3) : '');
+}
+async function loadDate(slot){
+  const infoEl = $('info' + slot);
+  infoEl.innerHTML = '<span class="ident-load">Searching…</span>';
+  try {
+    const sc = await findScene($('date' + slot).value, $('cloudMax').value);
+    state.items[slot] = sc;
+    loadSlotLayer(slot);
+    infoEl.innerHTML = sceneInfoHtml(sc) + (sc.coverage < 0.9 ? '<br><span class="hint-err">Scene covers only part of the AOI.</span>' : '');
+    updateCompareClip();
+  } catch (err) { state.items[slot] = null; infoEl.innerHTML = '<span class="hint-err">' + esc(err.message) + '</span>'; }
+}
+async function fetchBoth(){
+  $('loadRow').style.display = 'flex'; $('loadMsg').textContent = 'Searching ' + sensor().label + ' archive for both dates…';
+  clearResult();
+  const delayedB = new Promise(r => setTimeout(() => loadDate('B').then(r), 450));
+  await Promise.all([loadDate('A'), delayedB]);
+  $('loadRow').style.display = 'none';
+}
+function updateLegend(){
+  const stops = (RAMPS[$('rampSel').value] || RAMPS.rdylgn).stops;
+  const rgb = $('displaySel').value === 'rgb';
+  $('lgTitle').textContent = rgb ? 'True colour (RGB)' : 'NDVI';
+  $('lgBar').style.background = rgb ? 'linear-gradient(90deg,#222,#777,#ddd)' : rampCss(stops);
+  $('lgMin').textContent = rgb ? 'dark' : $('nMin').value; $('lgMax').textContent = rgb ? 'bright' : $('nMax').value;
+  $('shLgBar').style.background = rampCss(stops);
+  $('shLegendRange').innerHTML = '<span>' + $('nMin').value + '</span><span>' + $('nMax').value + '</span>';
+}
+function validateScale(changed){
+  let a = parseFloat($('nMin').value), b = parseFloat($('nMax').value);
+  if (!isFinite(a)) a = -0.1; if (!isFinite(b)) b = 0.8;
+  a = Math.max(-1, Math.min(1, a)); b = Math.max(-1, Math.min(1, b));
+  if (a >= b) { if (changed === 'nMax') a = +(b - 0.1).toFixed(2); else b = +(a + 0.1).toFixed(2); }
+  $('nMin').value = a; $('nMax').value = b;
+}
+
+/* ============================== CLICK IDENTIFY ============================== */
+async function pointNDVI(item, lon, lat){
+  const isL = item.collection === 'landsat-c2-l2', S = isL ? SENSORS.l89 : SENSORS.s2;
+  const url = DATA_ITEM + '/point/' + lon + ',' + lat + '?collection=' + S.collection + '&item=' + encodeURIComponent(item.id) +
+    '&assets=' + S.red + '&assets=' + S.nir + '&asset_as_band=true&expression=' + encodeURIComponent(ndviExpr(item));
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const j = await res.json();
+  const v = j.values ? j.values[0] : (Array.isArray(j.data) ? j.data[0] : undefined);
+  return isNum(v) ? v : null;
+}
+function adminNamesAt(p){
+  const out = [];
+  const hit = k => B[k].fc ? B[k].fc.features.find(f => inBBox(p, f.properties._bbox) && pip(p, f.geometry)) : null;
+  const v = hit('village'), t = hit('taluka'), d = hit('district');
+  if (v) out.push(nameOf('village', v)); if (t) out.push(nameOf('taluka', t) + ' tk.'); if (d) out.push(nameOf('district', d));
+  return out.join(', ');
+}
+function gridValueAt(lon, lat){
+  const r = state.result; if (!r) return null;
+  const g = r.grid, c = Math.floor((lon - g.lon0) / g.d), row = Math.floor((g.lat1 - lat) / g.d);
+  if (c < 0 || row < 0 || c >= g.W || row >= g.H) return null;
+  const i = row * g.W + c;
+  return {a: r.A.ndvi[i], b: r.B.ndvi[i], sa: r.A.flag[i], sb: r.B.flag[i]};
+}
+async function onMapIdentify(e){
+  const {lat, lng} = e.latlng;
+  const popup = L.popup({className:'identify-pop', maxWidth:250}).setLatLng(e.latlng).setContent('<div class="ident-load">Reading NDVI…</div>').openOn(map);
+  const lines = [];
+  const place = adminNamesAt([lng, lat]); if (place) lines.push('<b>' + esc(place) + '</b>');
+  const gv = gridValueAt(lng, lat);
+  for (const slot of ['A', 'B']) {
+    const sc = state.items[slot]; if (!sc) continue;
+    const item = sc.items.find(it => itemCovers(it, [lng, lat]));
+    if (!item) { lines.push('<b>Date ' + slot + '</b>: outside scene'); continue; }
+    try {
+      const v = await pointNDVI(item, lng, lat);
+      let flag = '';
+      if (gv) { const f = slot === 'A' ? gv.sa : gv.sb; if (f === 2) flag = ' <span class="hint-err">(cloud/shadow)</span>'; }
+      lines.push('<b>Date ' + slot + '</b> (' + sc.date + '): NDVI ' + (v === null ? 'no data' : v.toFixed(3)) + flag);
+    } catch (err) { lines.push('<b>Date ' + slot + '</b>: value unavailable'); }
+  }
+  if (gv && isNum(gv.a) && isNum(gv.b)) lines.push('ΔNDVI (masked grid): <b>' + fmtS(gv.b - gv.a, 3) + '</b>');
+  if (!state.items.A && !state.items.B) lines.push('Fetch scenes first to read NDVI here.');
+  lines.push('<div style="margin-top:6px;color:#8FA0A8;font-family:var(--mono);font-size:10.5px;">' + lat.toFixed(5) + ', ' + lng.toFixed(5) + '</div>');
+  popup.setContent(lines.join('<br>'));
+}
+
+/* ============================== RASTER ANALYSIS ============================== */
+const signCache = new Map();
+async function signHref(href){
+  if (signCache.has(href)) return signCache.get(href);
+  const res = await fetch(SIGN_URL + encodeURIComponent(href));
+  if (!res.ok) throw new Error('URL signing failed (HTTP ' + res.status + ')');
+  const j = await res.json();
+  signCache.set(href, j.href);
+  return j.href;
+}
+function epsgOf(item){
+  const p = item.properties;
+  if (p['proj:epsg']) return Number(p['proj:epsg']);
+  if (p['proj:code']) return parseInt(String(p['proj:code']).replace(/\D/g, ''), 10);
+  const a = Object.values(item.assets).find(a => a['proj:epsg'] || a['proj:code']);
+  if (a) return Number(a['proj:epsg'] || String(a['proj:code']).replace(/\D/g, ''));
+  throw new Error('Scene has no projection code');
+}
+function utmDef(epsg){
+  let zone, south = false;
+  if (epsg >= 32601 && epsg <= 32660) zone = epsg - 32600;
+  else if (epsg >= 32701 && epsg <= 32760) { zone = epsg - 32700; south = true; }
+  else throw new Error('Unexpected EPSG ' + epsg);
+  return '+proj=utm +zone=' + zone + (south ? ' +south' : '') + ' +datum=WGS84 +units=m +no_defs';
+}
+function makeGrid(bbox, res){
+  const lat = (bbox[1] + bbox[3]) / 2;
+  const native = res / 111320;                                  // degrees per native pixel (N–S)
+  const span = Math.max((bbox[2] - bbox[0]) * Math.cos(lat * Math.PI / 180), bbox[3] - bbox[1]);
+  const d = Math.max(native, span / MAX_GRID);
+  const W = Math.max(1, Math.ceil((bbox[2] - bbox[0]) / d)), H = Math.max(1, Math.ceil((bbox[3] - bbox[1]) / d));
+  return {lon0: bbox[0], lat1: bbox[3], d, W, H, metres: d * 111320};
+}
+/* Scanline polygon rasteriser (even-odd, cell centres). Writes `val` into out[] for covered cells. */
+function rasterize(geom, grid, out, val){
+  const {lon0, lat1, d, W, H} = grid;
+  const edges = [];
+  (geom.type === 'Polygon' ? [geom.coordinates] : geom.coordinates).forEach(p => p.forEach(r => {
+    for (let i = 0, j = r.length - 1; i < r.length; j = i++) if (r[i][1] !== r[j][1]) edges.push(r[j][0], r[j][1], r[i][0], r[i][1]);
+  }));
+  const b = geomBBox(geom);
+  const r0 = Math.max(0, Math.floor((lat1 - b[3]) / d)), r1 = Math.min(H - 1, Math.ceil((lat1 - b[1]) / d));
+  const xs = [];
+  for (let row = r0; row <= r1; row++) {
+    const y = lat1 - (row + 0.5) * d;
+    xs.length = 0;
+    for (let e = 0; e < edges.length; e += 4) {
+      const x1 = edges[e], y1 = edges[e + 1], x2 = edges[e + 2], y2 = edges[e + 3];
+      if ((y1 > y) !== (y2 > y)) xs.push(x1 + (y - y1) * (x2 - x1) / (y2 - y1));
+    }
+    if (xs.length < 2) continue;
+    xs.sort((a, b) => a - b);
+    for (let k = 0; k + 1 < xs.length; k += 2) {
+      const c0 = Math.max(0, Math.ceil((xs[k] - lon0) / d - 0.5)), c1 = Math.min(W - 1, Math.floor((xs[k + 1] - lon0) / d - 0.5));
+      for (let c = c0; c <= c1; c++) out[row * W + c] = val;
+    }
+  }
+}
+async function readScene(scene, grid, mask, progress){
+  const N = grid.W * grid.H;
+  const ndvi = new Float32Array(N).fill(NaN), flag = new Uint8Array(N);  // flag: 0 none, 1 clear, 2 cloud
+  let k = 0;
+  for (const item of scene.items) {
+    k++;
+    const isL = item.collection === 'landsat-c2-l2', S = isL ? SENSORS.l89 : SENSORS.s2;
+    progress('Scene ' + scene.date + ' · tile ' + k + '/' + scene.items.length + ': signing…');
+    const [uR, uN, uM] = await Promise.all([S.red, S.nir, S.mask].map(a => signHref(item.assets[a].href)));
+    const [tR, tN, tM] = await Promise.all([uR, uN, uM].map(u => GeoTIFF.fromUrl(u)));
+    const epsg = epsgOf(item);
+    proj4.defs('EPSG:' + epsg, utmDef(epsg));
+    const fwd = proj4('EPSG:4326', 'EPSG:' + epsg);
+    const img0 = await tR.getImage();
+    const ib = img0.getBoundingBox();
+    // AOI grid extent in the scene's UTM (sample edges, not only corners)
+    let ux0 = Infinity, uy0 = Infinity, ux1 = -Infinity, uy1 = -Infinity;
+    const gx1 = grid.lon0 + grid.W * grid.d, gy0 = grid.lat1 - grid.H * grid.d;
+    for (let i = 0; i <= 8; i++) for (let j = 0; j <= 8; j++) {
+      if (i > 0 && i < 8 && j > 0 && j < 8) continue;
+      const p = fwd.forward([grid.lon0 + (gx1 - grid.lon0) * i / 8, gy0 + (grid.lat1 - gy0) * j / 8]);
+      ux0 = Math.min(ux0, p[0]); ux1 = Math.max(ux1, p[0]); uy0 = Math.min(uy0, p[1]); uy1 = Math.max(uy1, p[1]);
+    }
+    const pad = 2 * S.res;
+    const bx = [Math.max(ib[0], ux0 - pad), Math.max(ib[1], uy0 - pad), Math.min(ib[2], ux1 + pad), Math.min(ib[3], uy1 + pad)];
+    if (bx[2] <= bx[0] || bx[3] <= bx[1]) continue;
+    const rm = Math.max(S.res, grid.metres * 0.9);
+    const w = Math.max(1, Math.min(6000, Math.round((bx[2] - bx[0]) / rm))), h = Math.max(1, Math.min(6000, Math.round((bx[3] - bx[1]) / rm)));
+    progress('Scene ' + scene.date + ' · tile ' + k + '/' + scene.items.length + ': reading ' + w + '×' + h + ' px…');
+    const opts = {bbox: bx, width: w, height: h, resampleMethod: 'nearest', interleave: false};
+    const [rR, rN, rM] = await Promise.all([tR.readRasters(opts), tN.readRasters(opts), tM.readRasters(opts)]);
+    const R = rR[0], Nn = rN[0], M = rM[0];
+    const off = isL ? 0 : s2Offset(item);
+    const sx = w / (bx[2] - bx[0]), sy = h / (bx[3] - bx[1]);
+    const STEP = 16;
+    for (let row = 0; row < grid.H; row++) {
+      const lat = grid.lat1 - (row + 0.5) * grid.d;
+      let pPrev = null, cPrev = -1, pNext = null, cNext = -1;
+      for (let c = 0; c < grid.W; c++) {
+        const i = row * grid.W + c;
+        if (!mask[i] || flag[i] === 1) continue;
+        // projected coordinate: exact every STEP columns, linear in between
+        if (c > cNext || pNext === null) {
+          cPrev = c - (c % STEP); cNext = Math.min(grid.W - 1, cPrev + STEP);
+          pPrev = fwd.forward([grid.lon0 + (cPrev + 0.5) * grid.d, lat]);
+          pNext = fwd.forward([grid.lon0 + (cNext + 0.5) * grid.d, lat]);
+        }
+        const t = cNext === cPrev ? 0 : (c - cPrev) / (cNext - cPrev);
+        const x = pPrev[0] + (pNext[0] - pPrev[0]) * t, y = pPrev[1] + (pNext[1] - pPrev[1]) * t;
+        const px = Math.floor((x - bx[0]) * sx), py = Math.floor((bx[3] - y) * sy);
+        if (px < 0 || py < 0 || px >= w || py >= h) continue;
+        const j = py * w + px, m = M[j], r = R[j], n = Nn[j];
+        if (isL) {
+          if (m & 1 || r === 0 || n === 0) continue;                           // fill
+          if (m & (2 | 8 | 16)) { if (!flag[i]) flag[i] = 2; continue; }      // dilated cloud, cloud, shadow
+          const rr = r * 0.0000275 - 0.2, nn = n * 0.0000275 - 0.2;
+          if (nn + rr <= 0) continue;
+          ndvi[i] = Math.max(-1, Math.min(1, (nn - rr) / (nn + rr))); flag[i] = 1;
+        } else {
+          if (m === 0 || m === 1 || r === 0 || n === 0) continue;             // nodata / saturated
+          if (m === 3 || m === 8 || m === 9 || m === 10) { if (!flag[i]) flag[i] = 2; continue; }  // shadow, cloud med/high, cirrus
+          const rr = (r - off) / 10000, nn = (n - off) / 10000;
+          if (nn + rr <= 0) continue;
+          ndvi[i] = Math.max(-1, Math.min(1, (nn - rr) / (nn + rr))); flag[i] = 1;
+        }
+      }
+    }
+  }
+  return {ndvi, flag};
+}
+function summarise(ndvi, flag, mask){
+  let total = 0, cloud = 0, sum = 0;
+  const vals = [];
+  const cls = new Array(NDVI_CLASSES.length).fill(0);
+  const hist = new Array(24).fill(0);                         // -0.2 … 1.0 in 0.05 bins
+  for (let i = 0; i < mask.length; i++) {
+    if (!mask[i]) continue;
+    total++;
+    if (flag[i] === 2) { cloud++; continue; }
+    const v = ndvi[i]; if (!isNum(v)) continue;
+    vals.push(v); sum += v;
+    for (let k = 0; k < NDVI_CLASSES.length; k++) if (v >= NDVI_CLASSES[k].lo && v < NDVI_CLASSES[k].hi) { cls[k]++; break; }
+    hist[Math.max(0, Math.min(23, Math.floor((v + 0.2) / 0.05)))]++;
+  }
+  const n = vals.length;
+  if (!n) return {n, total, cloud, cloudPct: total ? 100 * cloud / total : 0, mean: null};
+  const s = Float32Array.from(vals).sort();
+  const q = p => s[Math.min(n - 1, Math.floor(p * n))];
+  return {n, total, cloud, cloudPct: 100 * cloud / total, validPct: 100 * n / total, mean: sum / n, median: q(0.5), p5: q(0.05), p95: q(0.95), min: s[0], max: s[n - 1],
+    cls: cls.map(c => 100 * c / n), hist};
+}
+async function analyzeAOI(){
+  if (!state.aoi) { alert('Choose a district / taluka / village or draw an AOI first.'); return; }
+  if (!state.items.A || !state.items.B) { alert('Fetch scenes for Date A and Date B first.'); return; }
+  if (typeof GeoTIFF === 'undefined' || typeof proj4 === 'undefined') { alert('Raster libraries are still loading — try again in a moment.'); return; }
+  $('loadRow2').style.display = 'flex'; $('btnAnalyze').disabled = true;
+  const progress = m => { $('loadMsg2').textContent = m; };
+  try {
+    const S = SENSORS[state.items.A.items[0].collection === 'landsat-c2-l2' ? 'l89' : 's2'];
+    const grid = makeGrid(state.aoi.bbox, S.res);
+    const N = grid.W * grid.H;
+    const mask = new Uint8Array(N);
+    rasterize(state.aoi.geometry, grid, mask, 1);
+    progress('Reading Date A pixels…');
+    const A = await readScene(state.items.A, grid, mask, progress);
+    progress('Reading Date B pixels…');
+    const B2 = await readScene(state.items.B, grid, mask, progress);
+    progress('Computing statistics…');
+    await sleep(10);
+    const sa = summarise(A.ndvi, A.flag, mask), sb = summarise(B2.ndvi, B2.flag, mask);
+    // change
+    const delta = new Float32Array(N).fill(NaN);
+    let nd = 0, dsum = 0, loss = 0, gain = 0;
+    for (let i = 0; i < N; i++) {
+      if (!mask[i] || A.flag[i] !== 1 || B2.flag[i] !== 1) continue;
+      const v = B2.ndvi[i] - A.ndvi[i]; delta[i] = v; nd++; dsum += v;
+      if (v < -0.1) loss++; else if (v > 0.1) gain++;
+    }
+    const change = {n: nd, mean: nd ? dsum / nd : null, lossPct: nd ? 100 * loss / nd : null, gainPct: nd ? 100 * gain / nd : null, stablePct: nd ? 100 * (nd - loss - gain) / nd : null};
+    // sub-areas
+    let subs = null;
+    if (state.aoi.children) {
+      const lab = new Int32Array(N);
+      state.aoi.children.forEach((c, k) => rasterize(c.geometry, grid, lab, k + 1));
+      const acc = state.aoi.children.map(() => ({cells: 0, na: 0, sa: 0, nb: 0, sb: 0, nd: 0, sd: 0, loss: 0}));
+      for (let i = 0; i < N; i++) {
+        const k = lab[i]; if (!k || !mask[i]) continue;
+        const o = acc[k - 1]; o.cells++;
+        if (A.flag[i] === 1) { o.na++; o.sa += A.ndvi[i]; }
+        if (B2.flag[i] === 1) { o.nb++; o.sb += B2.ndvi[i]; }
+        if (isNum(delta[i])) { o.nd++; o.sd += delta[i]; if (delta[i] < -0.1) o.loss++; }
+      }
+      subs = state.aoi.children.map((c, k) => {
+        const o = acc[k];
+        return {name: c.name, code: c.code, geometry: c.geometry, cells: o.cells,
+          ndviA: o.na ? o.sa / o.na : null, ndviB: o.nb ? o.sb / o.nb : null, delta: o.nd ? o.sd / o.nd : null,
+          lossPct: o.nd ? 100 * o.loss / o.nd : null, clearPct: o.cells ? 100 * Math.min(o.na, o.nb) / o.cells : null};
+      });
+    }
+    state.result = {grid, mask, A, B: B2, sa, sb, delta, change, subs, sensor: S, sceneA: state.items.A, sceneB: state.items.B, aoiName: state.aoi.name};
+    renderDeltaLayer();
+    renderSubLayer();
+    renderDashboard();
+  } catch (err) {
+    console.error(err);
+    $('dashContent').innerHTML = '<div class="empty-state hint-err">Analysis failed: ' + esc(err.message) +
+      '<br><br>If this says "Failed to fetch", your network or an ad-blocker is blocking Planetary Computer\'s image storage.</div>';
+  } finally { $('loadRow2').style.display = 'none'; $('btnAnalyze').disabled = false; }
+}
+function clearResult(){
+  state.result = null;
+  if (state.deltaLayer) { map.removeLayer(state.deltaLayer); state.deltaLayer = null; }
+  if (state.subLayer) { map.removeLayer(state.subLayer); state.subLayer = null; }
+  $('tglD').disabled = true; $('tglD').classList.remove('on'); $('tglS').disabled = true; $('tglS').classList.remove('on');
+  $('lgDelta').style.display = 'none';
+  state.charts.forEach(c => c.destroy()); state.charts = [];
+  $('dashContent').innerHTML = '<div class="empty-state">Fetch scenes for Date A &amp; B, then run <b>Analyse AOI NDVI</b> to populate statistics, vegetation change, class breakdown' +
+    (state.aoi && state.aoi.children ? ' and a table of ' + state.aoi.children.length + ' ' + state.aoi.childLabel : '') + ' here.</div>';
+}
+function gridBounds(g){ return [[g.lat1 - g.H * g.d, g.lon0], [g.lat1, g.lon0 + g.W * g.d]]; }
+function renderDeltaLayer(){
+  const r = state.result, g = r.grid;
+  const cv = document.createElement('canvas'); cv.width = g.W; cv.height = g.H;
+  const ctx = cv.getContext('2d'), img = ctx.createImageData(g.W, g.H);
+  for (let i = 0; i < r.delta.length; i++) {
+    const v = r.delta[i]; if (!isNum(v)) continue;
+    const c = rampRGB(DELTA_STOPS, (v + 0.4) / 0.8);
+    img.data[i * 4] = c[0]; img.data[i * 4 + 1] = c[1]; img.data[i * 4 + 2] = c[2]; img.data[i * 4 + 3] = 235;
+  }
+  ctx.putImageData(img, 0, 0);
+  if (state.deltaLayer) map.removeLayer(state.deltaLayer);
+  state.deltaLayer = L.imageOverlay(cv.toDataURL('image/png'), gridBounds(g), {pane:'deltaPane', className:'pixelated', interactive:false});
+  $('tglD').disabled = false; $('tglD').classList.remove('on');
+}
+function renderSubLayer(){
+  const r = state.result;
+  if (state.subLayer) { map.removeLayer(state.subLayer); state.subLayer = null; }
+  if (!r.subs) { $('tglS').disabled = true; return; }
+  state.subLayer = L.geoJSON({type:'FeatureCollection', features: r.subs.map((s, k) => ({type:'Feature', geometry:s.geometry, properties:{k}}))}, {
+    pane:'subPane',
+    style: f => { const s = r.subs[f.properties.k]; return {color:'#0F1416', weight:.8, fillOpacity: isNum(s.delta) ? .8 : .25,
+      fillColor: isNum(s.delta) ? rgbCss(rampRGB(DELTA_STOPS, (s.delta + 0.3) / 0.6)) : '#5b666b'}; },
+    onEachFeature: (f, l) => { const s = r.subs[f.properties.k];
+      l.bindTooltip('<b>' + esc(s.name) + '</b><br>NDVI A ' + fmt(s.ndviA, 3) + ' → B ' + fmt(s.ndviB, 3) + '<br>Δ ' + fmtS(s.delta, 3) + ' · loss ' + fmt(s.lossPct, 0) + '%', {className:'sub-tip', sticky:true}); }
+  });
+  $('tglS').disabled = false; $('tglS').classList.remove('on');
+}
+function toggleOverlay(btn, layer, legend){
+  if (!layer) return;
+  const on = !btn.classList.contains('on');
+  btn.classList.toggle('on', on);
+  if (on) layer.addTo(map); else map.removeLayer(layer);
+  if (legend) $('lgDelta').style.display = ($('tglD').classList.contains('on') || $('tglS').classList.contains('on')) ? 'block' : 'none';
+}
+
+/* ============================== DASHBOARD ============================== */
+function changeWord(d){
+  if (!isNum(d)) return '';
+  if (d <= -0.1) return 'strong vegetation decline — possible drought / crop stress';
+  if (d <= -0.03) return 'moderate vegetation decline';
+  if (d < 0.03) return 'little overall change';
+  if (d < 0.1) return 'moderate vegetation improvement';
+  return 'strong vegetation improvement (greener)';
+}
+let subSort = {key:'delta', asc:true};
+function renderDashboard(){
+  const r = state.result, sa = r.sa, sb = r.sb, ch = r.change;
+  state.charts.forEach(c => c.destroy()); state.charts = [];
+  const dCol = isNum(ch.mean) ? (ch.mean < 0 ? '#d8b365' : '#5ab4ac') : 'var(--text)';
+  const noA = !sa.n, noB = !sb.n;
+  let html =
+    '<div class="help" style="margin:0 0 8px;color:var(--text);"><b>' + esc(r.aoiName) + '</b><br><span style="font-family:var(--mono);font-size:10.5px;color:var(--muted);">' +
+      r.sensor.label + ' · pixel ≈ ' + Math.round(r.grid.metres) + ' m · grid ' + r.grid.W + '×' + r.grid.H + '</span></div>' +
+    '<div class="stat-cards">' +
+      '<div class="stat-card a"><div class="lbl">A · mean NDVI</div><div class="val">' + fmt(sa.mean, 3) + '</div><div class="sub">' + r.sceneA.date + '</div></div>' +
+      '<div class="stat-card b"><div class="lbl">B · mean NDVI</div><div class="val">' + fmt(sb.mean, 3) + '</div><div class="sub">' + r.sceneB.date + '</div></div>' +
+      '<div class="stat-card a"><div class="lbl">A · median / P5–P95</div><div class="val" style="font-size:14px;">' + fmt(sa.median, 2) + '</div><div class="sub">' + fmt(sa.p5, 2) + ' – ' + fmt(sa.p95, 2) + '</div></div>' +
+      '<div class="stat-card b"><div class="lbl">B · median / P5–P95</div><div class="val" style="font-size:14px;">' + fmt(sb.median, 2) + '</div><div class="sub">' + fmt(sb.p5, 2) + ' – ' + fmt(sb.p95, 2) + '</div></div>' +
+      '<div class="stat-card a"><div class="lbl">A · clear / cloud</div><div class="val" style="font-size:14px;">' + fmt(sa.validPct, 0) + '%</div><div class="sub">' + fmt(sa.cloudPct, 1) + '% masked cloud</div></div>' +
+      '<div class="stat-card b"><div class="lbl">B · clear / cloud</div><div class="val" style="font-size:14px;">' + fmt(sb.validPct, 0) + '%</div><div class="sub">' + fmt(sb.cloudPct, 1) + '% masked cloud</div></div>' +
+    '</div>';
+  if (noA || noB) html += '<div class="delta-banner hint-err">No clear pixels for Date ' + (noA ? 'A' : 'B') + ' inside the AOI — pick another date or raise the cloud slider.</div>';
+  html += '<div class="delta-banner">Mean ΔNDVI (B − A, same pixels): <b style="color:' + dCol + '">' + fmtS(ch.mean, 3) + '</b><br>' +
+      '<span style="color:var(--muted);">' + changeWord(ch.mean) + '</span>' +
+      '<div class="change-bar">' +
+        (isNum(ch.lossPct) ? '<div style="width:' + ch.lossPct + '%;background:#bf812d" title="loss"></div><div style="width:' + ch.stablePct + '%;background:#8a9499" title="stable"></div><div style="width:' + ch.gainPct + '%;background:#35978f" title="gain"></div>' : '') +
+      '</div><span style="font-family:var(--mono);font-size:11px;"><span class="sw" style="background:#bf812d"></span>loss ' + fmt(ch.lossPct, 1) + '% &nbsp;<span class="sw" style="background:#8a9499"></span>stable ' + fmt(ch.stablePct, 1) +
+      '% &nbsp;<span class="sw" style="background:#35978f"></span>gain ' + fmt(ch.gainPct, 1) + '%</span>' +
+      '<br><span style="color:var(--muted);font-size:11px;">Loss/gain = |Δ| &gt; 0.1 · ' + ch.n.toLocaleString() + ' pixels clear on both dates. Toggle <b>Δ</b> on the map.</span></div>' +
+    '<div class="chartbox"><canvas id="cvClass"></canvas></div>' +
+    '<div class="chartbox"><canvas id="cvHist"></canvas></div>';
+  if (r.subs) {
+    html += '<h2 class="dash-h" style="margin-top:4px;">' + esc(state.aoi.childLabel || 'sub-areas') + ' · ' + r.subs.length + '</h2>' +
+      '<div class="help" style="margin:-4px 0 6px;">Sorted by ΔNDVI (largest decline first). Toggle <b>▦</b> for the map. Click a row to zoom.</div>' +
+      '<div class="tablewrap"><table class="sub" id="subTable"></table></div>';
+  }
+  $('dashContent').innerHTML = html;
+  if (typeof Chart !== 'undefined') {
+    const tick = {color:'#8FA0A8', font:{size:10}}, grid = {color:'#2B363C'};
+    state.charts.push(new Chart($('cvClass'), {type:'bar',
+      data:{labels: NDVI_CLASSES.map(c => c.name), datasets:[
+        {label:'Date A', data: sa.cls || [], backgroundColor:'#D9A441'},
+        {label:'Date B', data: sb.cls || [], backgroundColor:'#4FC08D'}]},
+      options:{responsive:true, maintainAspectRatio:false, animation:false,
+        plugins:{legend:{labels:{color:'#E7EDEF', boxWidth:10, font:{size:10.5}}}, title:{display:true, text:'Vegetation classes (% of clear pixels)', color:'#E7EDEF', font:{size:11.5}}},
+        scales:{x:{ticks:Object.assign({maxRotation:30, minRotation:0}, tick), grid:{display:false}}, y:{ticks:tick, grid, beginAtZero:true}}}}));
+    const hl = Array.from({length:24}, (_, i) => (-0.2 + i * 0.05 + 0.025).toFixed(2));
+    const norm = h => { const t = (h || []).reduce((a, b) => a + b, 0) || 1; return (h || []).map(v => 100 * v / t); };
+    state.charts.push(new Chart($('cvHist'), {type:'line',
+      data:{labels: hl, datasets:[
+        {label:'Date A', data: norm(sa.hist), borderColor:'#D9A441', backgroundColor:'rgba(217,164,65,.18)', fill:true, pointRadius:0, tension:.3},
+        {label:'Date B', data: norm(sb.hist), borderColor:'#4FC08D', backgroundColor:'rgba(79,192,141,.18)', fill:true, pointRadius:0, tension:.3}]},
+      options:{responsive:true, maintainAspectRatio:false, animation:false,
+        plugins:{legend:{labels:{color:'#E7EDEF', boxWidth:10, font:{size:10.5}}}, title:{display:true, text:'NDVI distribution (% of pixels)', color:'#E7EDEF', font:{size:11.5}}},
+        scales:{x:{ticks:Object.assign({maxTicksLimit:7}, tick), grid:{display:false}}, y:{ticks:tick, grid, beginAtZero:true}}}}));
+  } else {
+    $('cvClass').parentNode.outerHTML = '<div class="help hint-err">Chart library did not load — numbers and exports still work.</div>';
+  }
+  if (r.subs) { subSort = {key:'delta', asc:true}; drawSubTable(); }
+}
+function drawSubTable(){
+  const r = state.result; if (!r || !r.subs) return;
+  const cols = [['name', 'Name'], ['ndviA', 'A'], ['ndviB', 'B'], ['delta', 'Δ'], ['lossPct', 'Loss%'], ['clearPct', 'Clear%']];
+  const rows = r.subs.map((s, k) => Object.assign({k}, s)).sort((a, b) => {
+    const x = a[subSort.key], y = b[subSort.key];
+    if (subSort.key === 'name') return (subSort.asc ? 1 : -1) * String(x).localeCompare(String(y));
+    if (!isNum(x)) return 1; if (!isNum(y)) return -1;
+    return subSort.asc ? x - y : y - x;
+  });
+  $('subTable').innerHTML = '<thead><tr>' + cols.map(([k, l]) => '<th data-k="' + k + '">' + l + (k === subSort.key ? (subSort.asc ? ' ▲' : ' ▼') : '') + '</th>').join('') + '</tr></thead><tbody>' +
+    rows.map(s => '<tr class="click" data-k="' + s.k + '"><td><span class="sw" style="background:' + (isNum(s.delta) ? rgbCss(rampRGB(DELTA_STOPS, (s.delta + 0.3) / 0.6)) : '#5b666b') + '"></span>' + esc(s.name) +
+      '</td><td>' + fmt(s.ndviA, 2) + '</td><td>' + fmt(s.ndviB, 2) + '</td><td>' + fmtS(s.delta, 3) + '</td><td>' + fmt(s.lossPct, 0) + '</td><td>' + fmt(s.clearPct, 0) + '</td></tr>').join('') + '</tbody>';
+  $('subTable').querySelectorAll('th').forEach(th => th.onclick = () => { const k = th.dataset.k; subSort.asc = subSort.key === k ? !subSort.asc : (k === 'name' || k === 'delta'); subSort.key = k; drawSubTable(); });
+  $('subTable').querySelectorAll('tbody tr').forEach(tr => tr.onclick = () => {
+    const s = r.subs[+tr.dataset.k];
+    map.fitBounds(L.geoJSON(s.geometry).getBounds(), {padding:[30, 30]});
+  });
+}
+
+/* ============================== EXPORTS ============================== */
+const WGS84_WKT = 'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]]';
+function baseName(){ const r = state.result; return 'ndvi_' + safeName(r ? r.aoiName : 'aoi') + '_' + (r ? r.sensor.collection.split('-')[0] : ''); }
+async function exportGeoTIFF(which){
+  const r = state.result;
+  if (!r) { alert('Run "Analyse AOI NDVI" first.'); return; }
+  if (typeof GeoTIFF === 'undefined' || !GeoTIFF.writeArrayBuffer) { alert('GeoTIFF writer not available.'); return; }
+  try {
+    const g = r.grid, N = g.W * g.H, out = new Float32Array(N);
+    const src = which === 'A' ? r.A.ndvi : which === 'B' ? r.B.ndvi : r.delta;
+    const fl = which === 'A' ? r.A.flag : which === 'B' ? r.B.flag : null;
+    for (let i = 0; i < N; i++) out[i] = (!r.mask[i] || !isNum(src[i]) || (fl && fl[i] !== 1)) ? -9999 : src[i];
+    const metadata = {height: g.H, width: g.W, ModelPixelScale: [g.d, g.d, 0], ModelTiepoint: [0, 0, 0, g.lon0, g.lat1, 0],
+      GTModelTypeGeoKey: 2, GTRasterTypeGeoKey: 1, GeographicTypeGeoKey: 4326, GDAL_NODATA: '-9999',
+      BitsPerSample: [32], SampleFormat: [3], SamplesPerPixel: 1, PhotometricInterpretation: 1};
+    const buf = await GeoTIFF.writeArrayBuffer(out, metadata);
+    const tag = which === 'D' ? 'delta_' + r.sceneA.date + '_' + r.sceneB.date : (which === 'A' ? r.sceneA.date : r.sceneB.date);
+    const name = baseName() + '_' + tag;
+    downloadBlob(new Blob([buf], {type:'image/tiff'}), name + '.tif');
+    const tfw = [g.d, 0, 0, -g.d, g.lon0 + g.d / 2, g.lat1 - g.d / 2].map(n => n.toFixed(12)).join('\n');
+    setTimeout(() => downloadBlob(new Blob([tfw], {type:'text/plain'}), name + '.tfw'), 350);
+    setTimeout(() => downloadBlob(new Blob([WGS84_WKT], {type:'text/plain'}), name + '.prj'), 700);
+  } catch (err) { alert('GeoTIFF export failed (' + err.message + ').'); }
+}
+function exportCSV(){
+  const r = state.result;
+  if (!r) { alert('Run "Analyse AOI NDVI" first.'); return; }
+  const sa = r.sa, sb = r.sb, f = (x, d) => isNum(x) ? x.toFixed(d) : '';
+  const rows = [['metric', 'date_A', 'date_B', 'delta_B_minus_A'],
+    ['aoi', '"' + r.aoiName.replace(/"/g, '""') + '"', '', ''], ['sensor', r.sensor.label, r.sensor.label, ''],
+    ['acquired_date', r.sceneA.date, r.sceneB.date, ''], ['scene_ids', r.sceneA.items.map(i => i.id).join(' '), r.sceneB.items.map(i => i.id).join(' '), ''],
+    ['pixel_size_m', Math.round(r.grid.metres), Math.round(r.grid.metres), ''],
+    ['mean_ndvi', f(sa.mean, 4), f(sb.mean, 4), f(r.change.mean, 4)], ['median_ndvi', f(sa.median, 4), f(sb.median, 4), isNum(sa.median) && isNum(sb.median) ? f(sb.median - sa.median, 4) : ''],
+    ['p5_ndvi', f(sa.p5, 4), f(sb.p5, 4), ''], ['p95_ndvi', f(sa.p95, 4), f(sb.p95, 4), ''],
+    ['clear_pixel_pct', f(sa.validPct, 2), f(sb.validPct, 2), ''], ['cloud_masked_pct', f(sa.cloudPct, 2), f(sb.cloudPct, 2), ''],
+    ...NDVI_CLASSES.map((c, k) => ['class_pct_' + c.name.replace(/[^A-Za-z]+/g, '_').toLowerCase(), f(sa.cls && sa.cls[k], 2), f(sb.cls && sb.cls[k], 2), sa.cls && sb.cls ? f(sb.cls[k] - sa.cls[k], 2) : '']),
+    ['veg_loss_pct_(delta<-0.1)', '', '', f(r.change.lossPct, 2)], ['veg_gain_pct_(delta>0.1)', '', '', f(r.change.gainPct, 2)]];
+  let csv = rows.map(x => x.join(',')).join('\n');
+  if (r.subs) {
+    csv += '\n\nsub_area,code,ndvi_A,ndvi_B,delta,loss_pct,clear_pct\n' +
+      r.subs.map(s => '"' + String(s.name).replace(/"/g, '""') + '",' + [s.code == null ? '' : s.code, f(s.ndviA, 4), f(s.ndviB, 4), f(s.delta, 4), f(s.lossPct, 2), f(s.clearPct, 1)].join(',')).join('\n');
+  }
+  downloadBlob(new Blob(['﻿' + csv], {type:'text/csv'}), baseName() + '_stats.csv');
+}
+function exportSubGeoJSON(){
+  const r = state.result;
+  if (!r || !r.subs) { alert('Analyse a district, taluka or multi-feature AOI first — sub-area results are exported.'); return; }
+  const r4 = x => isNum(x) ? +x.toFixed(4) : null;
+  const gj = {type:'FeatureCollection', features: r.subs.map(s => ({type:'Feature', geometry:s.geometry,
+    properties:{name:s.name, code:s.code == null ? null : s.code, ndvi_A:r4(s.ndviA), ndvi_B:r4(s.ndviB), delta:r4(s.delta), loss_pct:r4(s.lossPct), clear_pct:r4(s.clearPct),
+      date_A:r.sceneA.date, date_B:r.sceneB.date, sensor:r.sensor.label}}))};
+  downloadBlob(new Blob([JSON.stringify(gj)], {type:'application/geo+json'}), baseName() + '_subareas.geojson');
+}
+async function exportMapPNG(){
+  try { const canvas = await html2canvas($('map'), {useCORS:true, backgroundColor:'#0d1113'}); canvas.toBlob(b => downloadBlob(b, baseName() + '_map.png')); }
+  catch (err) { alert('PNG export failed: ' + err.message); }
+}
+
+/* ============================== PRINT LAYOUT ============================== */
+let overviewMap = null;
+async function openPrintModal(){
+  $('printModal').classList.add('open');
+  $('shTitle').textContent = $('pTitle').value; $('shArea').textContent = $('pArea').value; $('shAuthor').textContent = 'Map created by ' + $('pAuthor').value;
+  const sA = state.items.A, sB = state.items.B;
+  $('shMeta').innerHTML = 'Date A: ' + (sA ? sA.date : '—') + '<br>Date B: ' + (sB ? sB.date : '—') + '<br>Sensor: ' + sensor().label + '<br>CRS: WGS84 (EPSG:4326)';
+  $('shLblA').textContent = 'Date A — ' + (sA ? sA.date : '') + ' · NDVI'; $('shLblB').textContent = 'Date B — ' + (sB ? sB.date : '') + ' · NDVI';
+  const line = sc => sc ? sc.items.map(i => i.id).join(', ') + '<br>' + sc.date + ' · ' + sc.cloud.toFixed(1) + '% cloud' : 'not loaded';
+  $('shSceneA').innerHTML = '<b>A</b> — ' + line(sA); $('shSceneB').innerHTML = '<b>B</b> — ' + line(sB);
+  updateLegend();
+  await refreshPrintSnapshots();
+}
+function closePrintModal(){ $('printModal').classList.remove('open'); }
+async function refreshPrintSnapshots(){
+  if (typeof html2canvas === 'undefined') return;
+  const oc = map.getCenter(), oz = map.getZoom();
+  const b = state.aoi ? state.aoi.bbox : MH_BBOX;
+  const aoiBounds = L.latLngBounds([[b[1], b[0]], [b[3], b[2]]]);
+  map.fitBounds(aoiBounds, {animate:false, padding:[16, 16]}); map.invalidateSize();
+  const zoomCtl = document.querySelector('.leaflet-control-zoom'); if (zoomCtl) zoomCtl.style.display = 'none';
+  map.closePopup();
+  const pA = map.getPane('panelayerA'), pB = map.getPane('panelayerB'), pD = map.getPane('deltaPane'), pS = map.getPane('subPane');
+  const prev = [pA.style.display, pB.style.display, pB.style.clipPath, pD.style.display, pS.style.display];
+  pS.style.display = 'none';
+  await sleep(700);
+  try { pA.style.display = ''; pB.style.display = 'none'; pD.style.display = 'none'; await sleep(300);
+    $('shMainImgA').src = (await html2canvas($('map'), {useCORS:true, backgroundColor:'#0d1113'})).toDataURL('image/png'); } catch (e) {}
+  try { pA.style.display = 'none'; pB.style.display = ''; pB.style.clipPath = ''; await sleep(300);
+    $('shMainImgB').src = (await html2canvas($('map'), {useCORS:true, backgroundColor:'#0d1113'})).toDataURL('image/png'); } catch (e) {}
+  pA.style.display = prev[0]; pB.style.display = prev[1]; pB.style.clipPath = prev[2]; pD.style.display = prev[3]; pS.style.display = prev[4];
+  if (zoomCtl) zoomCtl.style.display = '';
+  map.setView(oc, oz, {animate:false});
+  updateCompareClip();
+  let ov = $('ovContainer');
+  if (!ov) { ov = document.createElement('div'); ov.id = 'ovContainer'; Object.assign(ov.style, {width:'300px', height:'240px', position:'fixed', left:'-9999px', top:'0'}); document.body.appendChild(ov); }
+  if (overviewMap) { overviewMap.remove(); overviewMap = null; ov.innerHTML = ''; }
+  overviewMap = L.map(ov, {zoomControl:false, attributionControl:false});
+  L.tileLayer(BASEMAPS.esri_topo.url, Object.assign({crossOrigin:'anonymous'}, BASEMAPS.esri_topo.opts)).addTo(overviewMap);
+  L.rectangle(aoiBounds, {color:'#2d8a3e', weight:2, fillOpacity:.25}).addTo(overviewMap);
+  overviewMap.fitBounds(aoiBounds, {animate:false});
+  overviewMap.setView(aoiBounds.getCenter(), Math.max(4, overviewMap.getZoom() - 4), {animate:false});
+  await sleep(500);
+  try { $('shOverviewImg').src = (await html2canvas(ov, {useCORS:true, backgroundColor:'#ffffff'})).toDataURL('image/png'); } catch (e) {}
+  const r = state.result;
+  if (r) {
+    const sa = r.sa, sb = r.sb, d = (x, y) => isNum(x) && isNum(y) ? fmtS(y - x, 3) : '–';
+    const rows = [['Mean NDVI', fmt(sa.mean, 3), fmt(sb.mean, 3), fmtS(r.change.mean, 3) + ' (per-pixel)'], ['Median NDVI', fmt(sa.median, 3), fmt(sb.median, 3), d(sa.median, sb.median)],
+      ['P5 – P95', fmt(sa.p5, 2) + ' – ' + fmt(sa.p95, 2), fmt(sb.p5, 2) + ' – ' + fmt(sb.p95, 2), ''],
+      ['Dense veg. (NDVI ≥ 0.6)', fmt(sa.cls && sa.cls[4], 1) + ' %', fmt(sb.cls && sb.cls[4], 1) + ' %', sa.cls && sb.cls ? fmtS(sb.cls[4] - sa.cls[4], 1) + ' pp' : ''],
+      ['Clear pixels', fmt(sa.validPct, 0) + ' %', fmt(sb.validPct, 0) + ' %', ''],
+      ['Vegetation loss / gain (|Δ| > 0.1)', '', '', fmt(r.change.lossPct, 1) + ' % / ' + fmt(r.change.gainPct, 1) + ' %']];
+    $('shStatsTable').querySelector('tbody').innerHTML = rows.map(x => '<tr>' + x.map(c => '<td>' + c + '</td>').join('') + '</tr>').join('');
+    if (state.charts[0]) $('shChartImg').src = state.charts[0].toBase64Image();
+  }
+}
+async function exportPrint(fmtOut){
+  const canvas = await html2canvas($('printSheet'), {useCORS:true, backgroundColor:'#ffffff', scale:2});
+  if (fmtOut === 'pdf') {
+    const {jsPDF} = window.jspdf, pdf = new jsPDF({orientation:'portrait', unit:'pt', format:'a4'});
+    const w = pdf.internal.pageSize.getWidth() - 40;
+    pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 20, 20, w, w * canvas.height / canvas.width);
+    pdf.save(baseName() + '_layout.pdf');
+  } else canvas.toBlob(b => downloadBlob(b, baseName() + '_layout.' + fmtOut), fmtOut === 'jpg' ? 'image/jpeg' : 'image/png', 0.95);
+}
+
+/* ============================== COMPARE SWIPE ============================== */
+function updateCompareClip(){
+  const wrap = $('compareWrap'), handle = $('compareHandle'), pct = Number($('compareRange').value);
+  handle.style.left = pct + '%';
+  if (!wrap.classList.contains('active') || !map) return;
+  const paneB = map.getPane('panelayerB'); if (!paneB) return;
+  const mapRect = $('map').getBoundingClientRect(), paneRect = paneB.getBoundingClientRect();
+  let inset = mapRect.left + mapRect.width * pct / 100 - paneRect.left;
+  if (!isFinite(inset) || inset < 0) inset = 0;
+  paneB.style.clipPath = 'inset(0 0 0 ' + inset + 'px)';
+}
+
+/* ============================== CALENDAR ============================== */
+const availCache = new Map();
+async function availableDays(y, m){
+  const S = sensor(), bbox = aoiSearchBBox();
+  const key = S.collection + '|' + y + '-' + m + '|' + bbox.join(',');
+  if (availCache.has(key)) return availCache.get(key);
+  const from = new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 10), to = new Date(Date.UTC(y, m + 1, 0)).toISOString().slice(0, 10);
+  let out;
+  try {
+    const feats = await stacGet(bbox, from, to, 250);
+    const cm = Number($('cloudMax').value);
+    out = new Map();
+    feats.forEach(f => { const d = f.properties.datetime.slice(0, 10), c = f.properties['eo:cloud_cover'];
+      if (!out.has(d) || c < out.get(d)) out.set(d, c); });
+    out.cloudMax = cm;
+  } catch (e) { out = 'ERROR'; }
+  availCache.set(key, out);
+  return out;
+}
+function initCalendar(inputEl){
+  const wrap = inputEl.closest('.datepick-wrap');
+  const icon = document.createElement('span'); icon.className = 'cal-icon'; icon.textContent = '📅'; wrap.appendChild(icon);
+  const pop = document.createElement('div'); pop.className = 'calendar-pop'; wrap.appendChild(pop);
+  let view, token = 0;
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  async function render(){
+    const my = ++token, y = view.getFullYear(), m = view.getMonth();
+    const startDow = new Date(y, m, 1).getDay(), days = new Date(y, m + 1, 0).getDate();
+    const sel = inputEl.value, minY = sensor().minYear, nowY = new Date().getFullYear();
+    const head = '<div class="cal-head"><button type="button" data-nav="-1">‹</button><select data-r="m">' +
+      months.map((mn, i) => '<option value="' + i + '"' + (i === m ? ' selected' : '') + '>' + mn + '</option>').join('') + '</select><select data-r="y">' +
+      Array.from({length: nowY - minY + 1}, (_, i) => nowY - i).map(yy => '<option' + (yy === y ? ' selected' : '') + '>' + yy + '</option>').join('') +
+      '</select><button type="button" data-nav="1">›</button></div>';
+    const grid = avail => {
+      let c = ['S','M','T','W','T','F','S'].map(d => '<div class="dow">' + d + '</div>').join('');
+      for (let i = 0; i < startDow; i++) c += '<div class="day mute"></div>';
+      for (let d = 1; d <= days; d++) {
+        const iso = isoOf(y, m, d);
+        let cls = 'day';
+        if (avail === null) cls += ' checking';
+        else if (avail !== 'ERROR') {
+          if (avail.has(iso)) cls += avail.get(iso) <= Number($('cloudMax').value) ? ' avail' : '';
+          else cls += ' unavail';
+        }
+        if (iso === sel) cls += ' sel';
+        const tip = avail && avail !== 'ERROR' && avail.has(iso) ? ' title="' + avail.get(iso).toFixed(0) + '% cloud"' : '';
+        c += '<div class="' + cls + '" data-d="' + d + '"' + tip + '>' + d + '</div>';
+      }
+      return c;
+    };
+    const foot = avail => avail === null ? '<div class="cal-foot"><div class="spinner" style="width:9px;height:9px;"></div><span>Checking imagery over AOI…</span></div>'
+      : avail === 'ERROR' ? '<div class="cal-foot err"><span>Could not check availability — any date allowed.</span></div>'
+      : '<div class="cal-foot"><span class="dot"></span><span>Dot = ' + sensor().label + ' scene ≤ ' + $('cloudMax').value + '% cloud (dim = cloudier)</span></div>';
+    const draw = avail => {
+      pop.innerHTML = head + '<div class="cal-grid">' + grid(avail) + '</div>' + foot(avail);
+      pop.querySelector('[data-nav="-1"]').onclick = e => { e.stopPropagation(); view = new Date(y, m - 1, 1); render(); };
+      pop.querySelector('[data-nav="1"]').onclick = e => { e.stopPropagation(); view = new Date(y, m + 1, 1); render(); };
+      pop.querySelector('[data-r="m"]').onchange = e => { view = new Date(y, +e.target.value, 1); render(); };
+      pop.querySelector('[data-r="y"]').onchange = e => { view = new Date(+e.target.value, m, 1); render(); };
+      pop.querySelectorAll('.day[data-d]:not(.unavail):not(.checking)').forEach(el => el.onclick = e => {
+        e.stopPropagation(); inputEl.value = isoOf(y, m, +el.dataset.d); pop.classList.remove('open');
+      });
+    };
+    const cached = availCache.get(sensor().collection + '|' + y + '-' + m + '|' + aoiSearchBBox().join(','));
+    draw(cached === undefined ? null : cached);
+    if (cached !== undefined) return;
+    const avail = await availableDays(y, m);
+    if (my === token) draw(avail);
+  }
+  inputEl.addEventListener('click', e => {
+    e.stopPropagation();
+    document.querySelectorAll('.calendar-pop.open').forEach(p => { if (p !== pop) p.classList.remove('open'); });
+    view = new Date((inputEl.value || new Date().toISOString().slice(0, 10)) + 'T00:00:00');
+    pop.classList.toggle('open');
+    if (pop.classList.contains('open')) render();
+  });
+  document.addEventListener('click', () => pop.classList.remove('open'));
+  pop.addEventListener('click', e => e.stopPropagation());
+}
+
+/* ============================== RESET ============================== */
+function resetAll(){
+  if (!confirm('Reset the map and dashboard? This clears loaded scenes, the AOI and analysis results.')) return;
+  ['A', 'B'].forEach(s => { if (state.tileLayers[s]) map.removeLayer(state.tileLayers[s]); state.tileLayers[s] = null; state.items[s] = null; $('info' + s).innerHTML = 'No scene loaded yet.'; });
+  $('dateA').value = '2023-10-20'; $('dateB').value = '2024-10-20';
+  $('cloudMax').value = 30; $('cloudVal').textContent = '30';
+  $('nMin').value = -0.1; $('nMax').value = 0.8; $('rampSel').value = 'rdylgn'; $('displaySel').value = 'ndvi'; $('sensorSel').value = 's2';
+  $('basemapSel').value = 'esri_imagery'; setBasemap('esri_imagery');
+  $('compareWrap').classList.remove('active'); $('compareHandle').classList.remove('active'); $('compareRange').value = 50;
+  map.getPane('panelayerB').style.clipPath = '';
+  ['A', 'B'].forEach(s => { $('tgl' + s).classList.add('on'); map.getPane('panelayer' + s).style.display = ''; });
+  updateLegend(); clearAOI(); map.setView(MH_CENTER, 7);
+}
+
+/* ============================== UI WIRING ============================== */
+function wireUI(){
+  initCalendar($('dateA')); initCalendar($('dateB'));
+  $('basemapSel').onchange = e => setBasemap(e.target.value);
+  $('sensorSel').onchange = () => {
+    availCache.clear();
+    const S = sensor();
+    ['A', 'B'].forEach(s => { if (+$('date' + s).value.slice(0, 4) < S.minYear) $('date' + s).value = S.minYear + $('date' + s).value.slice(4); });
+    if (state.items.A || state.items.B) fetchBoth();
+  };
+  $('displaySel').onchange = () => { updateLegend(); refreshLoadedLayers(); };
+  $('cloudMax').oninput = e => { $('cloudVal').textContent = e.target.value; };
+  $('nMin').onchange = () => { validateScale('nMin'); updateLegend(); refreshLoadedLayers(); };
+  $('nMax').onchange = () => { validateScale('nMax'); updateLegend(); refreshLoadedLayers(); };
+  $('rampSel').onchange = () => { updateLegend(); refreshLoadedLayers(); };
+  updateLegend();
+  $('btnSearch').onclick = fetchBoth;
+  $('btnCompare').onclick = () => {
+    const active = $('compareWrap').classList.toggle('active');
+    $('compareHandle').classList.toggle('active', active);
+    $('btnCompare').textContent = active ? 'Disable swipe compare' : 'Enable swipe compare (A ▸ B)';
+    if (!active) map.getPane('panelayerB').style.clipPath = ''; else updateCompareClip();
+  };
+  $('compareRange').oninput = updateCompareClip;
+  ['A', 'B'].forEach(s => $('tgl' + s).onclick = function(){ this.classList.toggle('on'); map.getPane('panelayer' + s).style.display = this.classList.contains('on') ? '' : 'none'; });
+  $('tglD').onclick = function(){ toggleOverlay(this, state.deltaLayer, true); };
+  $('tglS').onclick = function(){ toggleOverlay(this, state.subLayer, true); };
+  $('btnDrawPolygon').onclick = () => startDraw('polygon');
+  $('btnDrawRect').onclick = () => startDraw('rectangle');
+  $('btnDrawCircle').onclick = () => startDraw('circle');
+  $('btnClearDraw').onclick = clearAOI;
+  $('aoiFile').onchange = handleAoiFile;
+  $('selDistrict').onchange = () => onAdminChange('district');
+  $('selTaluka').onchange = () => onAdminChange('taluka');
+  $('selVillage').onchange = () => onAdminChange('village');
+  ['District', 'Taluka', 'Village'].forEach(K => {
+    const k = K.toLowerCase();
+    $('file' + K).onchange = e => onBoundaryFile(k, e);
+    $('fld' + K).onchange = e => { B[k].field = e.target.value; if (k !== 'village') linkParents(); VCACHE.clear(); fillDistricts(); };
+  });
+  $('btnAnalyze').onclick = analyzeAOI;
+  $('expTifA').onclick = () => exportGeoTIFF('A'); $('expTifB').onclick = () => exportGeoTIFF('B'); $('expTifD').onclick = () => exportGeoTIFF('D');
+  $('expCsv').onclick = exportCSV; $('expPng').onclick = exportMapPNG; $('expGeo').onclick = exportSubGeoJSON;
+  $('btnOpenPrint').onclick = openPrintModal; $('btnClosePrint').onclick = closePrintModal; $('btnRefreshPrint').onclick = refreshPrintSnapshots;
+  $('btnPdf').onclick = () => exportPrint('pdf'); $('btnPngPrint').onclick = () => exportPrint('png'); $('btnJpgPrint').onclick = () => exportPrint('jpg');
+  $('pTitle').oninput = e => $('shTitle').textContent = e.target.value;
+  $('pArea').oninput = e => $('shArea').textContent = e.target.value;
+  $('pAuthor').oninput = e => $('shAuthor').textContent = 'Map created by ' + e.target.value;
+  $('btnReset').onclick = resetAll;
+  $('btnHelp').onclick = () => $('helpModal').classList.add('open');
+  $('btnCloseHelp').onclick = () => $('helpModal').classList.remove('open');
+  [$('printModal'), $('helpModal')].forEach(m => m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); }));
+}
+</script>
+</body>
+</html>
